@@ -1,0 +1,15 @@
+# Build artifacts
+*.o
+*.a
+
+# Compiled binaries
+ptolemy
+ptolemy.x
+
+# Pending/scratch work files
+*.pending
+
+# Editor and OS artifacts
+*.swp
+*~
+.DS_Store

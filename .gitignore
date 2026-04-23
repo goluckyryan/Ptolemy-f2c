@@ -1,0 +1,34 @@
+# Build artifacts
+*.o
+*.a
+
+# Executables
+ptolemy.x
+Cpp/ptolemy
+
+# Test run temporaries
+test_fortran_copy_tmp/
+fort.*
+
+# Python
+__pycache__/
+*.pyc
+
+# Local convenience symlinks (not part of the code)
+Cleopatra/
+
+# Reference material (local only)
+reference/
+
+# Scripts, test inputs, and output files (local only)
+*.py
+*.sh
+*.in
+*.txt
+*.dat
+*.png
+
+# Editor/OS
+*.swp
+*~
+.DS_Store
