@@ -82,7 +82,8 @@ void WAVEF(int& IRET)
     int ONEJSW, SOSW, TCSW, THISTC, FKEPSW;
 
     // Other locals
-    int IPRNT, LLMAX, LLMIN, LSAVE, JPSAVE;
+    int IPRNT, LLMAX, LLMIN, LSAVE;
+    double JPSAVE;  // must be double: preserves NOTDEF bit pattern (int cast loses it)
     int LSKIP, ISTAT, NSTEP, NSTEPS, NSPL;
     int LOCWRK, NFJ, NGJ;
     int LWAVR, LWAVI, LSMATS, LTOC;
@@ -113,7 +114,7 @@ void WAVEF(int& IRET)
     LLMAX = (int)LMAX;
     LLMIN = (int)LMIN;
     LSAVE = L;
-    JPSAVE = (int)JP;
+    JPSAVE = JP;  // save as double to preserve NOTDEF bit pattern
 
     //
     if (L == NOTDEF) goto L60;
@@ -286,6 +287,7 @@ L220:
         //
         for (ISP = ISPST; ISP <= ISPND; ISP += 2) {
             if (!ftobool(ONEJSW)) JP = 2 * L + ISP;
+            if (ICHANW == 2 && L <= 2)
             THISTC = (ftobool(TCSW) && (int)JP != 2 * L && (int)JP - L >= 0)
                      ? TRUE_F : FALSE_F;
 
@@ -518,18 +520,23 @@ L679:
 L700:
     if (IELAST == 0) goto L850;
     FKEPSW = (ISAVB == 1 || ftobool(SOSW)) ? TRUE_F : FALSE_F;
-    // TODO: ELDCS call needs correct signature — stubbed for now
-    // ELDCS(&ALLOC(1), ETA, ANGMIN, ANGMAX, ANGSTP,
-    //       LLMIN, LLMAX, LSKIP, ISTAT, ...);
+    ELDCS(H/STEPSZ, ETA, ANGMIN, ANGMAX, ANGSTP,
+          LLMIN, LLMAX, LSKIP, ISTAT, (int)JSP,
+          KANDM.ISMATS[ICHANW], WAVCOM.ITOCE[ICHANW],
+          NSPL, KANDM.ISIGS[ICHANW], ELAB, ELAB/E - 1.0, TRUE_F,
+          ITORUT, RUTNAM.data, FKEPSW,
+          IFEL, "F       ", SIGREA,
+          IRUTH, RUTHNM.data);
 
     //
     //     NOW COMPUTE THE ANALYZING POWERS (IF NONZERO).
     //
     if (!ftobool(SOSW)) goto L850;
     WAVCOM.PWBGSW = (MOD(IPRINT, 10) >= 3) ? TRUE_F : FALSE_F;
-    // TODO: ANAPOW call needs correct signature — stubbed for now
-    // ANAPOW(ANGMIN, ANGMAX, ANGSTP, (int)JSP, (int)JSP, (int)JST, (int)JST,
-    //        NSPL, 1, TRUE_F, ...);
+    ANAPOW(ANGMIN, ANGMAX, ANGSTP, (int)JSP, (int)JSP, (int)JST, (int)JST,
+           NSPL, 1, TRUE_F, WAVCOM.PWBGSW,
+           "ANPOW   ", ELAB, "ELASTIC ",
+           IFEL, WAVCOM.ITOCE[ICHANW], IAPOW);
 
     //
     //     A L L   D O N E
