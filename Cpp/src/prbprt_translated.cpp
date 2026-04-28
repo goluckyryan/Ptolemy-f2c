@@ -74,7 +74,8 @@ void PRBPRT(int& IRET)
     int JXMIN, JXMAX;
     double BETA, CHARGE, ATERM, TEMP;
     double EMUL, R2MASS, VC;
-    double R2S[5] = {};  // 1-based local (Fortran EQUIVALENCE to RBNDS not needed in C++)
+    // R2S is EQUIVALENCED to RBNDS(1) in FORMF — must write to FORMF, not local!
+    double* R2S = &FORMF.RBNDS[0];  // R2S[1]=RBNDS[1], R2S[2]=RBNDS[2], R2S[3..4] overflow into ABNDS
     int K;
     int IBETNR, LATERM, LBETA, LBETAC, LBETAR, LBELX_loc, LBETNR;
     int ITEST, NUMPAR;
