@@ -37,8 +37,6 @@ void DRIVE(double* RHSR, double* RHSI, int I5, int I6, int NFIRST,
 
 // INELD2 → ineld2_translated.cpp
 
-void INGRST(int& IRET)
-{ IRET = 0; std::printf(" INGRST: stub — translate from source.f L21287-22124\n"); }
+// INGRST → ingrst_translated.cpp
 
-void INRDIN(int& IRTN)
-{ IRTN = 1; std::printf(" INRDIN: stub — translate from source.f L22212-22813\n"); }
+// INRDIN → inrdin_translated.cpp

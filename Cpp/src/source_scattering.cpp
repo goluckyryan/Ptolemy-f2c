@@ -11,6 +11,4 @@
 #include <cstring>
 #include <cmath>
 
-// COULST is still pending translation
-void COULST(int& IRTN)
-{ IRTN = 1; std::printf(" COULST: stub — translate from source.f L11210-11873\n"); }
+// COULST is now fully translated in coulst_translated.cpp
