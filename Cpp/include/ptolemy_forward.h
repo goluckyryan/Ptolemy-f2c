@@ -317,16 +317,31 @@ int BSPROD(double& FPFT, int ITYPE, double RA, double RB, double X,
            int ISCAT, int NAIT, double& RP, double& RT);
 void BSSET();
 void CLINTS(double RLOWER, double ETAI, double ETAF, double FKI, double FKF,
-            double SIGI, double SIGF, int LMIN_arg, int LI, int LF,
-            int NPTS, double* XS, double* WTS, double* RESULT);
+            double SIGI, double SIGF, double ACCURA_arg, double ASMULT,
+            double& FFINT, double& FGINT, double& GFINT, double& GGINT,
+            double* PTS, double* WTS, double* FA, double* FPA,
+            double* GA, double* GPA, double* WORK,
+            int N, int LI, int LF, int NTERMS, int NPTS,
+            int& IRET, int IPRINT);
 void JPTOLX(int L, int LAS, int JP, int NWP, double* SJR, double* SJI,
             int* INDX, double* SLX);
 
 // Scattering
-void COULIN(int N, int MAXDEL, int LMIN_arg, int LMAX_arg, double ETAOUT,
-            double AKOUT, double* SIGOUT, int NSTEP, double H,
-            double* POTRL, double* POTIM, double* FG, int NBAK,
-            double* FG1, int& LFINAL, int& IRET);
+// COULIN — Coulomb integrals by recursion (source.f L10647)
+// SUBROUTINE COULIN(N, MAXDEL, LMIN, LMAX, ETAOUT, AKOUT, SIGOUT,
+//   ETAIN, AKIN, SIGIN, R, ALLSW, FF, FG, GF, GG, LDLDIM,
+//   ACCURA, ASMULT, NTERMS, NPTS, WORK, FI, FO, GI, GO, STARTS,
+//   IPRINT, IRET, CLTIME)
+void COULIN(int N, int MAXDEL, int LMIN_arg, int LMAX_arg,
+            double ETAOUT, double AKOUT, double* SIGOUT,
+            double ETAIN,  double AKIN,  double* SIGIN,
+            double R, int ALLSW,
+            double* FF, double* FG, double* GF, double* GG,
+            int LDLDIM,
+            double ACCURA, double ASMULT, int NTERMS, int NPTS,
+            double* WORK, double* FI, double* FO, double* GI, double* GO,
+            double* STARTS,
+            int IPRINT, int& IRET, double& CLTIME);
 double COULNG(int L, double ETA, double RHO, double ANORM);
 void COULST(int& IRTN);
 void GETSCT(int& IRET);

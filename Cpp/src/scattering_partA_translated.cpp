@@ -138,9 +138,13 @@ L50:
                 LOUT = LS + I - 1 - LIN;
                 if (LIN < 0 || LOUT < 0) goto L59;
                 A = ASMULT;
-                // TODO: CLINTS call needs correct signature — stubbed for now
-                // CLINTS(RMINS[II], ETAIN, ETAOUT, AKIN, AKOUT, ...);
-                IRET = 0;
+                CLINTS(RMINS[II], ETAIN, ETAOUT, AKIN, AKOUT,
+                       SIGIN[LIN], SIGOUT[LOUT],
+                       ACCS[II], A,
+                       STARTS_4D(ID,IS,1,II), STARTS_4D(ID,IS,2,II),
+                       STARTS_4D(ID,IS,3,II), STARTS_4D(ID,IS,4,II),
+                       WORK, WORK+NPTS, FI, FO, GI, GO, WORK+2*NPTS,
+                       N, LIN, LOUT, NTRM, NPTS, IRET, IPRINT);
                 if (IRET != 0) return;
 L59:            ;
             }

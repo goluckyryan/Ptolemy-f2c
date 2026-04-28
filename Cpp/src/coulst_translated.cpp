@@ -38,24 +38,8 @@ extern double RTXLNX(double A, double B, double C, double ACC);
 extern int GIVEAL(int IWRDS);
 extern int CHOPIT(int IWRDS);
 
-// Full COULIN signature (source.f L10647-10651):
-//   COULIN(N, MAXDEL, LMIN, LMAX, ETAOUT, AKOUT, SIGOUT,
-//          ETAIN, AKIN, SIGIN, R, ALLSW,
-//          FF, FG, GF, GG, LDLDIM,
-//          ACCURA, ASMULT, NTERMS, NPTS,
-//          WORK, FI, FO, GI, GO, STARTS,
-//          IPRINT, IRET, CLTIME)
-extern void COULIN_full(
-    int N, int MAXDEL, int LMIN_arg, int LMAX_arg,
-    double ETAOUT, double AKOUT, double* SIGOUT,
-    double ETAIN, double AKIN, double* SIGIN,
-    double R, int ALLSW,
-    double* FF, double* FG, double* GF, double* GG,
-    int LDLDIM,
-    double ACCURA, double ASMULT, int NTERMS, int NPTS,
-    double* WORK, double* FI, double* FO, double* GI, double* GO,
-    double* STARTS,
-    int IPRINT, int& IRET, double& CLTIME);
+// COULIN is declared in ptolemy_forward.h (real signature, source.f L10647)
+// and implemented in coulin_translated.cpp.
 
 // Full GENBNX signature (source.f L17285-17287):
 extern void GENBNX_full(
@@ -89,15 +73,8 @@ extern void SETFG_full(
     double* FGWORK, double R1, double R2, int& IRET);
 
 // ---------------------------------------------------------------------------
-// Thin wrappers: the forward.h declarations for these routines have the wrong
-// argument count; we implement them here as pass-throughs to the actual
-// implementations (which live in their own translation units).  When those
-// translation units are written, they will define the full-signature version;
-// until then the calls below will produce link errors that are easy to fix.
+// Stub implementations for routines not yet fully translated.
 // ---------------------------------------------------------------------------
-
-// We route the Fortran CALL COULIN(…) to the full-signature extern above.
-// The inline wrapper removes a dispatch layer.
 
 // ---------------------------------------------------------------------------
 
@@ -615,7 +592,7 @@ L400:
         for (LX = LXMIN; LX <= LXMAX; LX += 2) {
             LMNMN = MAX0(LMIN - (LX + 1) / 2, LX / 2);
 
-            COULIN_full(
+            COULIN(
                 LX + 1, LX, LMNMN, LMXMX,
                 ETAS[2], KANDM.AKO, &ALLOC(LSIG2),
                 ETAS[1], KANDM.AKI, &ALLOC(LSIG1),
@@ -726,7 +703,7 @@ L500:
             // Fortran passes DUMMY8 (a real*8 array of size 1) for unused args
             static double DUMMY8[2] = {0.0, 0.0};
 
-            COULIN_full(
+            COULIN(
                 LX + 1, LX, LMNMN, LMXMX,
                 ETAS[2], KANDM.AKO, &ALLOC(LOCPTRS.Z[ISIGS[2]]),
                 ETAS[1], KANDM.AKI, &ALLOC(LOCPTRS.Z[ISIGS[1]]),
@@ -989,36 +966,7 @@ L300_rtx:
     return X;
 }
 
-// COULIN_full — stub (to be replaced when coulin is translated)
-void COULIN_full(
-    int N, int MAXDEL, int LMIN_arg, int LMAX_arg,
-    double ETAOUT, double AKOUT, double* SIGOUT,
-    double ETAIN, double AKIN, double* SIGIN,
-    double R, int ALLSW,
-    double* FF, double* FG, double* GF, double* GG,
-    int LDLDIM,
-    double ACCURA, double ASMULT, int NTERMS, int NPTS,
-    double* WORK, double* FI, double* FO, double* GI, double* GO,
-    double* STARTS,
-    int IPRINT, int& IRET, double& CLTIME)
-{
-    // Stub — forward to the existing COULIN declaration in ptolemy_forward.h
-    // The forward.h version has a different (older) signature; we call it here
-    // with a matching argument map when this stub is replaced.
-    (void)N; (void)MAXDEL; (void)LMIN_arg; (void)LMAX_arg;
-    (void)ETAOUT; (void)AKOUT; (void)SIGOUT;
-    (void)ETAIN; (void)AKIN; (void)SIGIN;
-    (void)R; (void)ALLSW;
-    (void)FF; (void)FG; (void)GF; (void)GG;
-    (void)LDLDIM;
-    (void)ACCURA; (void)ASMULT; (void)NTERMS; (void)NPTS;
-    (void)WORK; (void)FI; (void)FO; (void)GI; (void)GO;
-    (void)STARTS;
-    (void)IPRINT;
-    IRET   = 0;
-    CLTIME = 0.0;
-    std::printf(" COULIN_full: stub — translate COULIN from source.f L10647\n");
-}
+// COULIN is now fully implemented in coulin_translated.cpp.
 
 // GENBNX_full — stub
 void GENBNX_full(
