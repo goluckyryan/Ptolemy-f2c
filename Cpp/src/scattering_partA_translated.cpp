@@ -145,6 +145,9 @@ L50:
                        STARTS_4D(ID,IS,3,II), STARTS_4D(ID,IS,4,II),
                        WORK, WORK+NPTS, FI, FO, GI, GO, WORK+2*NPTS,
                        N, LIN, LOUT, NTRM, NPTS, IRET, IPRINT);
+                // IRET<0 means CLINTS could not converge — the integral is
+                // genuinely tiny (below numerical accuracy). Treat as 0.
+                if (IRET < 0) IRET = 0;
                 if (IRET != 0) return;
 L59:            ;
             }

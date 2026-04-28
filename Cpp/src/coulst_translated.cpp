@@ -591,7 +591,6 @@ L400:
         //
         for (LX = LXMIN; LX <= LXMAX; LX += 2) {
             LMNMN = MAX0(LMIN - (LX + 1) / 2, LX / 2);
-
             COULIN(
                 LX + 1, LX, LMNMN, LMXMX,
                 ETAS[2], KANDM.AKO, &ALLOC(LSIG2),
