@@ -383,25 +383,6 @@ L520: ;
 //
     SJR = (CR * A1 + CI * A2) / (A1 * A1 + A2 * A2);
     SJI = (CI * A1 - CR * A2) / (A1 * A1 + A2 * A2);
-    // DIAG_SMAT diagnostic (fortran_copy/source.f line 36261, Fortran WRITE(*,...))
-    {
-        auto fE15_8 = [](double val) -> std::string {
-            char buf[24];
-            if (val == 0.0) { std::sprintf(buf, " 0.00000000E+00"); return buf; }
-            double absv = std::fabs(val);
-            int exp_f = (int)std::floor(std::log10(absv)) + 1;
-            double mant = absv / std::pow(10.0, (double)exp_f);
-            long long m = (long long)(mant * 1e8 + 0.5);
-            if (m >= 100000000LL) { m /= 10; exp_f++; }
-            char sign = (val < 0) ? '-' : ' ';
-            std::sprintf(buf, "%c0.%08lldE%+03d", sign, m, exp_f);
-            return std::string(buf);
-        };
-        std::printf("DIAG_SMAT NWP=%1d L=%3d JP=%3d |S|=%12.6f PHASE=%12.6f SJR=%s SJI=%s\n",
-                    NWP, L, JP,
-                    std::sqrt(SJR * SJR + SJI * SJI), std::atan2(SJI, SJR),
-                    fE15_8(SJR).c_str(), fE15_8(SJI).c_str());
-    }
     LINDXE = ALLOCS.FACFR4 * LOCPTRS.Z[WAVCOM.IINDXE[NWP]] - ALLOCS.FACFR4 + 1;
     if ((NWP != 2) || (SWITCH.PROBLM != 24)) {
         JPTOLX(L, L, JP, NWP, &SJR, &SJI,
