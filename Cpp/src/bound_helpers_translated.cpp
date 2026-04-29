@@ -600,9 +600,8 @@ L140:
     A0 = F / CHI;
 
     //
-    // FOR DIFFERENCE WE MAY NOT NEED MUCH CONVERGENCE DUE TO
-    // A LARGE NUMERIC CONTRIBUTION.
-    // CAN WE NOW USE BELLING
+    // Precheck: can we use Belling at this RVAL?
+    // Same formula as Fortran (source.f L8855-8860).
     //
     R = ( N/RVAL + 2*(FKI*ZI*DABS(TI) + FKF*ZF*DABS(TF)) ) / DABS(CHI);
     EPS = EPSIL;
@@ -611,8 +610,7 @@ L140:
     if ( DB*DB <= EPS )  goto L300;
 
     //
-    // NO, INTEGRATE ONE CYCLE OF THE WHOLE WORKS OR OF JUST
-    //     THE DIFFERENCE PARTS.
+    // Not yet — integrate one cycle numerically, then retry at larger RVAL.
     //
 L150:
     if ( ISYN == -1 )  DELTA = PI / (DABS(CHI) + N/RVAL);

@@ -544,12 +544,6 @@ void PRTCHI(int& IRET)
 void PRTDER(int& IRET)
 { IRET = 0; /* translate from source.f L30042-30229 */ }
 
-void RCASYM(int L, double ETA, double RHO, int IPRN, double SIGL,
-            double* ZETA, double* PHI, double* DZETA,
-            double* F, double* FP, double* G, double* GP,
-            double* Z, double* DZSQ, double* S, double* ZINV,
-            double EPS, int& NMAX, int& NTZ, int& ISIG)
-{ NMAX = 0; NTZ = 0; ISIG = 0; /* translate from source.f L30438-30607 */ }
 
 void REQUIV(double& RC, double& RC0, int IZ, int IA)
 { /* translate from source.f L30859-30924 */ }
