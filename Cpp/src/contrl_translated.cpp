@@ -801,7 +801,7 @@ L360:
     WORD = KYWORD;
     if (ICNTT == 0) ISTART(ISIZE);
     ICNTT = 1;
-    DEFINE(WORD, NUM1, NUM2);
+    DEFINE(WORD, NUM1, ISIZE);  // must pass ISIZE (allocator size), not NUM2
     if (NUM1 > NUM2) goto L950;
     goto L10;
 
