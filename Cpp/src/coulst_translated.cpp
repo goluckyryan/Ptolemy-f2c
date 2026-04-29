@@ -279,7 +279,7 @@ void COULST(int& IRTN) {
     NCHNDF = 2;
     // LBETAR = Z(IBETAS(3)) - LXMIN/2
     // In Fortran: LBETAR is used as base pointer so ALLOC(LBETAR + LX/2) = beta(LX)
-    LBETAR = LOCPTRS.Z[IBETAS[3]] - LXMIN / 2;
+    LBETAR = LOCPTRS.Z[IBETAS[2]] - LXMIN / 2;
 
     for (LX = LXMIN; LX <= LXMAX; LX += 2) {
         if (ALLOC(LBETAR + LX / 2) == 0.0) goto L69;

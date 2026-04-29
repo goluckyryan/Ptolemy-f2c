@@ -322,7 +322,7 @@ struct InelcmCommon {
     int    NUMLX;
     int    IRDINT, IELCUP, LILOSZ, NUMLIS;
     int    ILIS;
-    int    IBETAS[4];   // 1-based
+    int    IBETAS[3];   // 0-based! Fortran IBETAS(3): [0]=IBETAS(1), [1]=IBETAS(2), [2]=IBETAS(3)
     int    ICL2FF, LXSTEP;
     int    IDENSW;      // LOGICAL
     int    LSKIP;

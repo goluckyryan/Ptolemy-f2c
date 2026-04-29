@@ -927,9 +927,9 @@ stmnt_510:
 
         // Setup IBETAS array
         BETA = 1.0;
-        for (II = 1; II <= 4; II++) {
-            IB = NAMLOC(BETNAM[II]);
-            BETSWS[II] = (IB != 0);
+        for (II = 0; II <= 3; II++) {
+            IB = NAMLOC(BETNAM[II+1]);
+            BETSWS[II+1] = (IB != 0);
             LEN = 0;
             if (IB == 0) goto do_stmnt_540;
 
@@ -940,25 +940,28 @@ stmnt_510:
 
             std::printf("\n**** %.8s WAS DEFINED TO HAVE%4d"
                         " VALUES BUT THERE ARE%4d VALUES OF LX\n",
-                        BETNAM[II], LEN, NUMLXI);
+                        BETNAM[II+1], LEN, NUMLXI);
             IRET = 0;
             goto do_stmnt_548;
 
 do_stmnt_540:
-            IB = NALLOC(BETNAM[II], NUMLXI);
+            IB = NALLOC(BETNAM[II+1], NUMLXI);
             for (I = 1; I <= NUMLXI; I++)
                 ALLOC(LOCPTRS.Z[IB] - 1 + I) = BETA;
 
 do_stmnt_548:
-            INELCM.IBETAS[II] = IB;
+            if (II < 3)
+                INELCM.IBETAS[II] = IB;  // 0-based [0..2] for IBETAS(1..3)
+            else
+                INELCM.ICL2FF = IB;      // Fortran IBETAS(4) overflows into ICL2FF
         }
 
         CHARGE = (double)IZS[2*IEXCIT - 1];
         IBETNR = NALLOC("BETANRAT", NUMLXI);
-        LBETA   = LOCPTRS.Z[INELCM.IBETAS[1]] - LXMIN/2;
-        LBETAC  = LOCPTRS.Z[INELCM.IBETAS[2]] - LXMIN/2;
-        LBETAR  = LOCPTRS.Z[INELCM.IBETAS[3]] - LXMIN/2;
-        LBELX_loc = LOCPTRS.Z[INELCM.IBETAS[4]] - LXMIN/2;
+        LBETA   = LOCPTRS.Z[INELCM.IBETAS[0]] - LXMIN/2;
+        LBETAC  = LOCPTRS.Z[INELCM.IBETAS[1]] - LXMIN/2;
+        LBETAR  = LOCPTRS.Z[INELCM.IBETAS[2]] - LXMIN/2;
+        LBELX_loc = LOCPTRS.Z[INELCM.ICL2FF] - LXMIN/2;  // Fortran IBETAS(4) overflows into ICL2FF
         LBETNR  = LOCPTRS.Z[IBETNR] - LXMIN/2;
 
         // Initialize for Clebsch-Gordan
@@ -1023,7 +1026,7 @@ stmnt_570:
         }
 
         // Final IBETAS definition: replace BETACOULOMB with BETANRAT
-        INELCM.IBETAS[2] = IBETNR;
+        INELCM.IBETAS[1] = IBETNR;
         goto stmnt_600;
     } // end inelastic block
 
@@ -1037,11 +1040,11 @@ stmnt_580:
     FLOAT_common.SPFACT = FLOAT_common.SPAMT * FLOAT_common.SPAMT;
 
     // Allocate and fill A-term array
-    INELCM.IBETAS[1] = NALLOC("ATERM   ", LXMAX + 1);
+    INELCM.IBETAS[0] = NALLOC("ATERM   ", LXMAX + 1);
 
     // Initialize for Racahs
     DUMMY1();
-    LATERM = LOCPTRS.Z[INELCM.IBETAS[1]];
+    LATERM = LOCPTRS.Z[INELCM.IBETAS[0]];
     TEMP = (JBIGB_ref + 1.0) / (JBIGA_ref + 1.0);
     if (ISTRIP == -1) TEMP = (JB_ref + 1.0) / (JA_ref + 1.0);
     TEMP = std::sqrt(TEMP);

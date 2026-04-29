@@ -87,7 +87,7 @@ void INRDIN(int& IRTN)
     int& ISMATR  = INELCM.ISMATR;
     int& ISMATI  = INELCM.ISMATI;
     int& ICL2FF  = INELCM.ICL2FF;
-    int* IBETASp = INELCM.IBETAS;   // 1-based: IBETAS[1],IBETAS[2],IBETAS[3]
+    int* IBETASp = INELCM.IBETAS;   // 0-based: [0]=BETA, [1]=BETANRAT, [2]=BETARATS
     int& IINDXS  = INELCM.IINDXS;
     int& IDENSW  = INELCM.IDENSW;
 
@@ -320,9 +320,9 @@ void INRDIN(int& IRTN)
     // LABS1 = Z(IABS1) - 1
     LABS1  = Z[IABS1_i] - 1;
     // LBNRAT = Z(IBETAS(2)) - LXMIN/2
-    LBNRAT = Z[IBETASp[2]] - LXMIN/2;
+    LBNRAT = Z[IBETASp[1]] - LXMIN/2;  // 0-based: [1] = Fortran IBETAS(2) = BETANRAT
     // LBRAT  = Z(IBETAS(3)) - LXMIN/2
-    LBRAT  = Z[IBETASp[3]] - LXMIN/2;
+    LBRAT  = Z[IBETASp[2]] - LXMIN/2;  // 0-based: [2] = Fortran IBETAS(3) = BETARATS
     // LWAVR = Z(IWAVR)
     LWAVR  = Z[IWAVR];
     // LWAVI = Z(IWAVI)

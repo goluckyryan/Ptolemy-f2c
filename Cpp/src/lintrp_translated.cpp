@@ -459,7 +459,7 @@ L500:
 
     if (TRANSW || CCSW) goto L680;
     FACTOR = sqrt(AKI * AKO / (WAVCOM.ES[1] * WAVCOM.ES[2] * PI));
-    LBRAT = Z[INELCM.IBETAS[3]] - LXMIN / 2;
+    LBRAT = Z[INELCM.IBETAS[2]] - LXMIN / 2;
 
 L680:
     if (!XTRPSW) goto L700;
