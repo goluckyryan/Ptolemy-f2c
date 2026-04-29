@@ -145,7 +145,6 @@ L50:
                        STARTS_4D(ID,IS,3,II), STARTS_4D(ID,IS,4,II),
                        WORK, WORK+NPTS, FI, FO, GI, GO, WORK+2*NPTS,
                        N, LIN, LOUT, NTRM, NPTS, IRET, IPRINT);
-                if (IRET < 0) IRET = 0;  // CLINTS non-convergence → treat as 0
                 if (IRET != 0) return;
 L59:            ;
             }
@@ -306,10 +305,10 @@ L400:
     TT = (float)dtime_();
 
     RCWFN(AKIN * R, ETAIN, LMINMN, LMAXMX, FI, WORK,
-        GI, &WORK[LMAXMX + 1], 1.0e-14, IRET);
+        GI, &WORK[LMAXMX], 1.0e-14, IRET);
     if (IRET != 0) goto L910;
     RCWFN(AKOUT * R, ETAOUT, LMINMN, LMAXMX, FO, WORK,
-        GO, &WORK[LMAXMX + 1], 1.0e-14, IRET);
+        GO, &WORK[LMAXMX], 1.0e-14, IRET);
     if (IRET != 0) goto L910;
 
     CLTIME = CLTIME + (float)dtime_() - TT;
