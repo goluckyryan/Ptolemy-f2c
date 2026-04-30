@@ -600,7 +600,7 @@ L400:
                 LDLDIM,
                 ACCINE, COULML, MXCOUL, NPCOUL,
                 &ALLOC(LWRKWK), &ALLOC(LWRKFI), &ALLOC(LWRKFO_loc),
-                &ALLOC(LWRKGI_loc), &ALLOC(LWRKGO_loc), &ALLOC(LOCPTRS.Z[IWRKST]),
+                &ALLOC(LWRKGI_loc), &ALLOC(LWRKGO_loc), ALLOC_base(LOCPTRS.Z[IWRKST]),
                 IPRINT / 100 % 10, IRET, CLTIME);
 
             if (IRET != 0) goto L9960;
@@ -715,7 +715,7 @@ L500:
                 &ALLOC(LOCPTRS.Z[IWRKFO]),
                 &ALLOC(LOCPTRS.Z[IWRKGI]),
                 &ALLOC(LOCPTRS.Z[IWRKGO]),
-                &ALLOC(LOCPTRS.Z[IWRKST]),
+                ALLOC_base(LOCPTRS.Z[IWRKST]),
                 IPRINT / 100 % 10, IRET, CLTIME);
 
             if (IRET != 0) goto L9960;
@@ -794,7 +794,7 @@ L700:
             NMBFAC, &ALLOC4(LCL1FF),
             &ALLOC(LWRKFF), IDIM1, LDLDIM,
             &ALLOC(LWRKWK), &ALLOC(LWRKFI), IDIM2,
-            &ALLOC(LOCPTRS.Z[IWRKST]), IRET, CLTIME);
+            ALLOC_base(LOCPTRS.Z[IWRKST]), IRET, CLTIME);
 
         if (IRET != 0) goto L9960;
 

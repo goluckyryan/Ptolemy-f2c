@@ -168,6 +168,12 @@ L64:            ;
 
     CLTIME = (float)dtime_() - TT;
 
+    // Dump FF starting values before recursion
+    for (int il=1; il<=4; il++) {
+        for (int id=1; id<=LDLDIM; id++)
+            std::fprintf(stderr, " FF(%d,%d)=%.8e", id, il, FF_2D(id,il));
+        std::fprintf(stderr, "\n");
+    }
     if (R != 0) goto L400;
 
     // HERE WE DO THE INTEGRAL  0 < R < 1.4*RTURN  BACKWARDS UNTIL
@@ -189,12 +195,12 @@ L110:
             RCWFN(AKIN * RVAL, ETAIN, LMN, LMX, FI, FO,
                 GI, GO, 1.0e-8, IRET);
             if (IRET != 0 && IRET != 2) goto L900;
-            if (DABS(FI[LMN + 1]) < ACCURA &&
+            if (DABS(FI[LMN]) < ACCURA &&
                 RVAL < RTURNS[II]) goto L165;
             RCWFN(AKOUT * RVAL, ETAOUT, LMN, LMX, FO, GI,
                 GO, &WORK[2 * NPTS + 1], 1.0e-8, IRET);
             if (IRET != 0 && IRET != 2) goto L900;
-            if (DABS(FO[LMN + 1]) < ACCURA &&
+            if (DABS(FO[LMN]) < ACCURA &&
                 RVAL < RTURNS[II]) goto L165;
             X = .5 * B * WORK[NPTS + IPT] / std::pow(RVAL, N);
             for (I = 1; I <= ISTOP; I++) {
@@ -206,7 +212,7 @@ L110:
                     LIN = (LS + I + MXDEL) / 2 + ID - 1 - MXDEL;
                     LOUT = LS + I - 1 - LIN;
                     if (LIN < 0 || LOUT < 0) goto L149;
-                    A = X * FI[LIN + 1] * FO[LOUT + 1];
+                    A = X * FI[LIN] * FO[LOUT];
                     FF_2D(ID, IL) = FF_2D(ID, IL) + A;
                     STARTS_4D(ID, IS, 1, II) = FF_2D(ID, IL);
 L149:               ;
@@ -347,14 +353,14 @@ L400:
             D = (DLO + 1) / (AKOUT * std::pow(R, N));
 
             FF_2D(ID2 - 1, IL + 1) = E * (A * FF_2D(ID, IL) + C * FF_2D(ID2, IL - 1) +
-                B * FF_2D(ID2 - 1, IL - 1) + D * FO[LOUT + 1] * FI[LIN + 1]);
+                B * FF_2D(ID2 - 1, IL - 1) + D * FO[LOUT] * FI[LIN]);
             if (!ALLSW) goto L499;
             FG_2D(ID2 - 1, IL + 1) = E * (A * FG_2D(ID, IL) + C * FG_2D(ID2, IL - 1) +
-                B * FG_2D(ID2 - 1, IL - 1) + D * FO[LOUT + 1] * GI[LIN + 1]);
+                B * FG_2D(ID2 - 1, IL - 1) + D * FO[LOUT] * GI[LIN]);
             GF_2D(ID2 - 1, IL + 1) = E * (A * GF_2D(ID, IL) + C * GF_2D(ID2, IL - 1) +
-                B * GF_2D(ID2 - 1, IL - 1) + D * GO[LOUT + 1] * FI[LIN + 1]);
+                B * GF_2D(ID2 - 1, IL - 1) + D * GO[LOUT] * FI[LIN]);
             GG_2D(ID2 - 1, IL + 1) = E * (A * GG_2D(ID, IL) + C * GG_2D(ID2, IL - 1) +
-                B * GG_2D(ID2 - 1, IL - 1) + D * GO[LOUT + 1] * GI[LIN + 1]);
+                B * GG_2D(ID2 - 1, IL - 1) + D * GO[LOUT] * GI[LIN]);
 L499:       ;
         }
 
@@ -371,14 +377,14 @@ L499:       ;
         D = (DLI + 1) / (AKIN * std::pow(R, N));
 
         FF_2D(ID2, IL + 1) = E * (A * FF_2D(ID, IL) + B * FF_2D(ID2, IL - 1)
-            + C * FF_2D(ID2 - 1, IL - 1) + D * FO[LOUTLS + 1] * FI[LINLS + 1]);
+            + C * FF_2D(ID2 - 1, IL - 1) + D * FO[LOUTLS] * FI[LINLS]);
         if (!ALLSW) goto L599;
         FG_2D(ID2, IL + 1) = E * (A * FG_2D(ID, IL) + B * FG_2D(ID2, IL - 1)
-            + C * FG_2D(ID2 - 1, IL - 1) + D * FO[LOUTLS + 1] * GI[LINLS + 1]);
+            + C * FG_2D(ID2 - 1, IL - 1) + D * FO[LOUTLS] * GI[LINLS]);
         GF_2D(ID2, IL + 1) = E * (A * GF_2D(ID, IL) + B * GF_2D(ID2, IL - 1)
-            + C * GF_2D(ID2 - 1, IL - 1) + D * GO[LOUTLS + 1] * FI[LINLS + 1]);
+            + C * GF_2D(ID2 - 1, IL - 1) + D * GO[LOUTLS] * FI[LINLS]);
         GG_2D(ID2, IL + 1) = E * (A * GG_2D(ID, IL) + B * GG_2D(ID2, IL - 1)
-            + C * GG_2D(ID2 - 1, IL - 1) + D * GO[LOUTLS + 1] * GI[LINLS + 1]);
+            + C * GG_2D(ID2 - 1, IL - 1) + D * GO[LOUTLS] * GI[LINLS]);
 
 L599:   ;
     } // 599
