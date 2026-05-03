@@ -196,11 +196,11 @@ void COULST(int& IRTN) {
     int&    IPADE   = GRIDCM.IA12N;
     int&    IHOMO   = GRIDCM.MSKCOS;
     int&    ISMTSV  = GRIDCM.MAXCNT;
-    // ICL1FF/FG/GF/GG live in GRIDCM.IGRDC2[1..4]
-    int&    ICL1FF  = GRIDCM.IGRDC2[1];
-    int&    ICL1FG  = GRIDCM.IGRDC2[2];
-    int&    ICL1GF  = GRIDCM.IGRDC2[3];
-    int&    ICL1GG  = GRIDCM.IGRDC2[4];
+    // ICL1FF/FG/GF/GG live in GRIDCM.IGRDC2[0..3] (no padding — Fortran IGRDC2(1..4))
+    int&    ICL1FF  = GRIDCM.IGRDC2[0];
+    int&    ICL1FG  = GRIDCM.IGRDC2[1];
+    int&    ICL1GF  = GRIDCM.IGRDC2[2];
+    int&    ICL1GG  = GRIDCM.IGRDC2[3];
 
     // WAVCOM
     double* RSTEPS  = WAVCOM.RSTEPS;  // 1-based

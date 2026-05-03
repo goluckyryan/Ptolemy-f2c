@@ -597,7 +597,7 @@ L605:
         LRWTS  = LOCPTRS.Z[IRWTS] - 1;
         LRPTS4 = FACFR4 * LOCPTRS.Z[IRPTS4] - FACFR4;
         CUBMAP(MAPSUM, SUMMIN, SUMMID, SUMMAX, GAMSUM,
-               &ALLOC(LRPTS + 1), &ALLOC(LRWTS + 1), NUMPT);
+               ALLOC_base(LRPTS + 1), ALLOC_base(LRWTS + 1), NUMPT);
 
         //
         //

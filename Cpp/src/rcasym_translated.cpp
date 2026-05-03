@@ -113,8 +113,8 @@ L600:
     *F_p = std::sin(PHI) / RTZ;
     *G_p = std::cos(PHI) / RTZ;
     FACTOR = (0.5 * DZETA) / (ZETA * ZETA);
-    *FP_p = ZETA * (*G_p) - FACTOR * (*F_p);
-    *GP_p = -ZETA * (*F_p) - FACTOR * (*G_p);
+    *FP_p = ZETA * ((*G_p) - FACTOR * (*F_p));
+    *GP_p = -ZETA * ((*F_p) + FACTOR * (*G_p));
 
     *ZETA_p = ZETA;
     *PHI_p = PHI;
