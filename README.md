@@ -19,9 +19,6 @@ allocator trick to correct C++ structs, making it portable and reliable.
 Cpp/                C++ transliteration of the full Ptolemy source (~61k lines)
 fortran_copy/       Clean Fortran sources with Makefile (gfortran -m32)
 docs/               Usage guide, keywords, and input file examples
-reference/          Example input/output and InFileCreator reference code
-inel_tests/         Inelastic scattering test inputs (15 cases)
-transfer_tests/     Transfer reaction test inputs (12 cases)
 ```
 
 ## Documentation
@@ -103,19 +100,11 @@ Use the Cleopatra binary or the C++ translation as reference.
 
 ## Running
 
+For input files, see [docs/Usage.md](docs/Usage.md).
+
 ```bash
 cd Cpp
 rm -f fort.*              # IMPORTANT: leftover fort.15 causes infinite loop
 ./ptolemy < ../test_16O_dp.in
 ./ptolemy < ../inel_tests/inel_208PB_aa.in
-```
-
-## Verification
-
-```bash
-# Inelastic test suite (15 cases, all < 0.1%)
-bash test_inelastic.sh
-
-# Fortran copy vs Cleopatra (transfer + bound state tests)
-bash test_fortran_copy.sh
 ```
