@@ -23,9 +23,10 @@ docs/               Usage guide, keywords, and input file examples
 
 ## Documentation
 
-See [docs/Usage.md](docs/Usage.md) for a complete reference of all Ptolemy
-keywords, control switches, parameter sets, and input file examples for every
-supported reaction type.
+- [docs/Usage.md](docs/Usage.md) — All keywords, parameter sets, and input file examples
+- [docs/Elastic.md](docs/Elastic.md) — Elastic scattering theory (optical model, Numerov, S-matrix, cross section)
+- [docs/DWBA.md](docs/DWBA.md) — Transfer reaction DWBA theory (form factor, distorted waves, spectroscopic factor)
+- [docs/Inelastic.md](docs/Inelastic.md) — Inelastic DWBA theory (collective model, Coulomb excitation, Belling expansion)
 
 ## Benchmark Results
 

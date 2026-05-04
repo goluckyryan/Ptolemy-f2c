@@ -14,29 +14,29 @@ $$U(r) = V_C(r) + V_N(r) + i\,W(r) + V_{SO}(r)\,\boldsymbol{\ell}\cdot\boldsymbo
 
 ### 1.1 Woods-Saxon Real Central Potential
 
-$$V_N(r) = -\frac{V}{1 + \exp\!\left(\frac{r - R}{a}\right)}$$
+$$V_N(r) = -\frac{V}{1 + \exp\left(\frac{r - R}{a}\right)}$$
 
 where $R = r_0 \cdot A_T^{1/3}$ (or $r_0(A_P^{1/3}+A_T^{1/3})$ depending on R0 convention).
 
 A generalized power form is also available:
 
-$$V_N(r) = -\frac{V}{\left[1 + \exp\!\left(\frac{r-R}{a}\right)\right]^p}$$
+$$V_N(r) = -\frac{V}{\left[1 + \exp\left(\frac{r-R}{a}\right)\right]^p}$$
 
 where $p$ is set by the `REALPOWER` keyword (default $p=1$).
 
 ### 1.2 Imaginary Volume Potential
 
-$$W_V(r) = -\frac{W}{1 + \exp\!\left(\frac{r - R_I}{a_I}\right)}$$
+$$W_V(r) = -\frac{W}{1 + \exp\left(\frac{r - R_I}{a_I}\right)}$$
 
 ### 1.3 Imaginary Surface (Derivative Woods-Saxon)
 
-$$W_S(r) = -4\,W_S\,\frac{\exp\!\left(\frac{r-R_{SI}}{a_{SI}}\right)}{\left[1 + \exp\!\left(\frac{r-R_{SI}}{a_{SI}}\right)\right]^2}$$
+$$W_S(r) = -4\,W_S\,\frac{\exp\left(\frac{r-R_{SI}}{a_{SI}}\right)}{\left[1 + \exp\left(\frac{r-R_{SI}}{a_{SI}}\right)\right]^2}$$
 
 The total imaginary potential is $W(r) = W_V(r) + W_S(r)$.
 
 ### 1.4 Spin-Orbit Potential (Thomas Form)
 
-$$V_{SO}(r) = \left(\frac{\hbar}{m_\pi c}\right)^2 \frac{V_{SO}}{r}\,\frac{d}{dr}\left[\frac{1}{1+\exp\!\left(\frac{r-R_{SO}}{a_{SO}}\right)}\right]$$
+$$V_{SO}(r) = \left(\frac{\hbar}{m_\pi c}\right)^2 \frac{V_{SO}}{r}\,\frac{d}{dr}\left[\frac{1}{1+\exp\left(\frac{r-R_{SO}}{a_{SO}}\right)}\right]$$
 
 The spin-orbit expectation value is:
 
@@ -208,7 +208,7 @@ and non-spin-flip components summed over $j$.
 
 The point-Coulomb scattering amplitude is:
 
-$$f_C(\theta) = -\frac{\eta}{2k\sin^2(\theta/2)} \exp\!\left[-i\eta\ln\sin^2(\theta/2) + 2i\sigma_0\right]$$
+$$f_C(\theta) = -\frac{\eta}{2k\sin^2(\theta/2)} \exp\left[-i\eta\ln\sin^2(\theta/2) + 2i\sigma_0\right]$$
 
 where $\sigma_\ell = \arg\Gamma(\ell+1+i\eta)$ is the Coulomb phase shift.
 
