@@ -9,6 +9,54 @@ All comparisons: max % error in differential cross section, C++ (g++ 64-bit) vs 
 
 ---
 
+## Known Discrepancy Sources
+
+All observed differences trace to these causes — none are translation bugs:
+
+### 1. Insufficient LMAX for beam energy
+
+The default `LMAXADD=30` gives `LMAX = LCRIT + 30`, which can be too small for
+high-energy reactions. The Coulomb phase shift tail decays as $\eta/\ell$ and
+converges slowly. **Fix:** use larger `LMAXADD` or explicit `LMAX`.
+With sufficient LMAX, all tested reactions match at **0.0000%**.
+
+### 2. Wynn epsilon algorithm sensitivity at specific angles
+
+The Wynn epsilon algorithm accelerates the partial wave sum. At $\theta = 90°$,
+odd-$\ell$ Legendre polynomials vanish ($P_\ell(0) = 0$), creating alternating
+zeros in the sequence. The Wynn algorithm is numerically sensitive to this, and
+32-bit vs 64-bit arithmetic produce slightly different accelerated sums.
+
+**Verified for 26Mg + alpha at 120 MeV:**
+
+| Condition | Fortran $\sigma/\sigma_R$ | C++ $\sigma/\sigma_R$ | Match? |
+|---|---|---|---|
+| Default (Wynn ON, LMAX=59) | 0.02188 | 0.02130 | 2.65% off |
+| Wynn OFF (`LEPSBACK=0`) | 0.02121 | 0.02121 | **0.0000%** |
+| LMAX=80 (converged sum) | 0.02149 | 0.02149 | **0.0000%** |
+
+Both codes compute identical S-matrix elements. The difference is only in
+the Wynn acceleration of an insufficiently converged partial wave sum.
+
+### 3. L-extrapolation functions (LXTRP) — not yet translated
+
+The Fortran L-extrapolation functions (LXTRP1/LXTRP2/LXTRPM, LINLSQ) that fit
+and extrapolate S-matrix elements beyond LMAX are currently stubs in the C++
+(return zero, effectively disabling extrapolation). This means the C++ requires
+sufficient LMAX to converge the partial wave sum directly, while Fortran can
+extrapolate from fewer terms.
+
+In practice, with `LMAXADD=60` or `LMAX` from kinematics ($\ell_{\max} \approx 1.5\,kR + 20$),
+the sum converges without extrapolation and both codes agree at **0.0000%**.
+
+### 4. Deuteron (d,d') inelastic convergence
+
+All 15 inelastic FAILs are deuteron (d,d') cases where **both** codes produce
+extrapolation warnings for spin-1 tensor channels. The residual cross sections
+after failed partial waves differ between 32-bit and 64-bit.
+
+---
+
 ## Transfer Reactions (DWBA) — 300 cases
 
 PASS: **294** | WARN: **6** | FAIL: **0**

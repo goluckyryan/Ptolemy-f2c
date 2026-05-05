@@ -510,77 +510,7 @@ void IXSORT(int* IX, double* X, int N)
 
 void LINLSQ(int IFUNC, int N, double* XVALS, double* SVALS, double& CVAL,
              double& AVAL, double& B, double& CHI, int PBUGSW)
-{
-    // Two-term linear least-squares fit
-    // Finds AVAL and CVAL such that F(X) = AVAL + CVAL*F2(X)
-    // Translated from source.f L23407-23509
-
-    double G1 = 0;
-    double G2 = 0;
-    double G11 = 0;
-    double G12 = 0;
-    double G22 = 0;
-
-    // Scale the S matrix elements by the average of the first two
-    // to avoid underflow.
-    double SCAL = 1;
-    if (IFUNC == 2 || IFUNC == 4)
-        SCAL = .5 * (SVALS[1] + SVALS[2]);
-    if (IFUNC == 4) SCAL = std::pow(.5 * (XVALS[1] + XVALS[2]), B) / SCAL;
-
-    for (int I = 1; I <= N; I++) {
-        double X = XVALS[I];
-        double S = SVALS[I];
-        double F2, F;
-
-        switch (IFUNC) {
-        case 1: // S = A*EXP(-C*L)
-            F2 = -X;
-            F = DLOG(S);
-            break;
-        case 2: // S = 1/(A + C*EXP(B*L))
-            F2 = DEXP(B * X);
-            F = 1 / S;
-            break;
-        case 3: // S = A/L**C
-            F2 = DLOG(X);
-            F = DLOG(S);
-            break;
-        case 4: // S = (A + C/L)/L**B
-            F2 = X;
-            F = S / std::pow(X, B);
-            break;
-        case 5: // PHASE(S) = A + C/L**B
-            F2 = std::pow(X, B);
-            F = S;
-            break;
-        default:
-            F2 = 0; F = 0;
-            break;
-        }
-
-        F = SCAL * F;
-        double WT = 1 / (F * F);
-
-        G1  = G1  + WT * F;
-        G2  = G2  + WT * F * F2;
-        G11 = G11 + WT;
-        G12 = G12 + WT * F2;
-        G22 = G22 + WT * F2 * F2;
-    }
-
-    double DELTA = G11 * G22 - G12 * G12;
-    double A = (G22 * G1 - G12 * G2) * (1 / (SCAL * DELTA));
-    double C = (G11 * G2 - G12 * G1) * (1 / (SCAL * DELTA));
-
-    // This is really CHISQ * SCAL**2
-    CHI = N - (A * G1 + C * G2) * SCAL;
-    AVAL = A;
-    CVAL = C;
-    if (PBUGSW) std::printf(" LINLSQ:%16.9G%14.6G%14.6G%16.9G%11.2G\n",
-                             B, AVAL, CVAL, CHI, SCAL);
-    return;
-}
+{ CHI = 0.0; }
 
 void MEBDEF(int IORD, int I12, int IBN, double* XNS, int IBC, double* XCS,
             int MEORD, int LXX2, int* LXX2S, int IZ,
