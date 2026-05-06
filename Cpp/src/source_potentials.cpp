@@ -11,6 +11,7 @@
 #include <cstdio>
 #include <cstring>
 #include <cmath>
+#include <algorithm>
 
 // External functions
 extern int IALLOC(int IWRDS);
@@ -420,8 +421,11 @@ L600:
     WOODSX(NSTEPP, 0.0, STEPSZ_loc, ALLOC_base(LVWORK + 1), N1, N2,
         2, FLOAT_common.VSO, FLOAT_common.RSO, FLOAT_common.ASO, 1.0);
 L610:
-    for (I = 1; I <= NSTEPP; I++)
-        ALLOC(LSOR + I) = (-H2 / (12.0 * FLOAT_common.E)) * ALLOC(LVWORK + I);
+    {
+        int NSTEP_SO = std::min(NSTEPP, LENGTH.LENG[WAVCOM.ISORS[NWP]]);
+        for (I = 1; I <= NSTEP_SO; I++)
+            ALLOC(LSOR + I) = (-H2 / (12.0 * FLOAT_common.E)) * ALLOC(LVWORK + I);
+    }
 
 L650:
     if (WAVCOM.ISOIS[NWP] == 0) goto L700;
@@ -431,8 +435,11 @@ L650:
     WOODSX(NSTEPP, 0.0, STEPSZ_loc, ALLOC_base(LVWORK + 1), N1, N2,
         2, FLOAT_common.VSOI, FLOAT_common.RSOI, FLOAT_common.ASOI, 1.0);
 L660:
-    for (I = 1; I <= NSTEPP; I++)
-        ALLOC(LSOI + I) = (-H2 / (12.0 * FLOAT_common.E)) * ALLOC(LVWORK + I);
+    {
+        int NSTEP_SOI = std::min(NSTEPP, LENGTH.LENG[WAVCOM.ISOIS[NWP]]);
+        for (I = 1; I <= NSTEP_SOI; I++)
+            ALLOC(LSOI + I) = (-H2 / (12.0 * FLOAT_common.E)) * ALLOC(LVWORK + I);
+    }
 
     // Tensor forces
 L700:
@@ -442,16 +449,18 @@ L700:
         I = II_ten + 6;
         if (LNKBLK.LNKADR[I][3] != 0) goto L800;
         WOODSX(NSTEPP, 0.0, STEPSZ_loc, ALLOC_base(LVWORK + 1), N1, N2,
-            ITYPS[II_ten], VTEN()[II_ten-1], RTEN()[II_ten-1], ATEN()[II_ten-1], 1.0);  // VTEN() is 0-based
+            ITYPS[II_ten], VTEN()[II_ten-1], RTEN()[II_ten-1], ATEN()[II_ten-1], 1.0);
     L710:
-        for (I = 1; I <= NSTEPP; I++)
-            ALLOC(LTEN + I) = (-H2 / (12.0 * FLOAT_common.E)) * ALLOC(LVWORK + I);
-        // Divide TPD potentials by R**2
-        if (II_ten < 5) continue;
-        RVAL = 1.0e-30;
-        for (I = 1; I <= NSTEPP; I++) {
-            ALLOC(LTEN + I) = ALLOC(LTEN + I) / (RVAL * RVAL);
-            RVAL = RVAL + STEPSZ_loc;
+        {
+            int NSTEP_TEN = std::min(NSTEPP, LENGTH.LENG[WAVCOM.ITENS[NWP][II_ten]]);
+            for (I = 1; I <= NSTEP_TEN; I++)
+                ALLOC(LTEN + I) = (-H2 / (12.0 * FLOAT_common.E)) * ALLOC(LVWORK + I);
+            if (II_ten < 5) { continue; }
+            RVAL = 1.0e-30;
+            for (I = 1; I <= NSTEP_TEN; I++) {
+                ALLOC(LTEN + I) = ALLOC(LTEN + I) / (RVAL * RVAL);
+                RVAL = RVAL + STEPSZ_loc;
+            }
         }
     }
     return;

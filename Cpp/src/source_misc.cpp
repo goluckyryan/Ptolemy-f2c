@@ -510,7 +510,41 @@ void IXSORT(int* IX, double* X, int N)
 
 void LINLSQ(int IFUNC, int N, double* XVALS, double* SVALS, double& CVAL,
              double& AVAL, double& B, double& CHI, int PBUGSW)
-{ CHI = 0.0; }
+{
+    double G1=0, G2=0, G11=0, G12=0, G22=0;
+    double SCAL=1, X, S, F2_v, F, WT, DELTA, A, C;
+
+    if (IFUNC==2 || IFUNC==4) SCAL = 0.5*(SVALS[1]+SVALS[2]);
+    if (IFUNC==4) SCAL = std::pow(0.5*(XVALS[1]+XVALS[2]), B) / SCAL;
+
+    for (int I=1; I<=N; I++) {
+        X = XVALS[I];
+        S = SVALS[I];
+        switch (IFUNC) {
+        case 1: F2_v = -X;             F = DLOG(DABS(S));       break;
+        case 2: F2_v = DEXP(B*X);      F = 1.0/S;              break;
+        case 3: F2_v = DLOG(DABS(X));   F = DLOG(DABS(S));      break;
+        case 4: F2_v = X;               F = S/std::pow(DABS(X), B); break;
+        case 5: F2_v = std::pow(DABS(X), B); F = S;             break;
+        }
+        F = SCAL * F;
+        WT = 1.0 / (F*F);
+        G1  = G1  + WT*F;
+        G2  = G2  + WT*F*F2_v;
+        G11 = G11 + WT;
+        G12 = G12 + WT*F2_v;
+        G22 = G22 + WT*F2_v*F2_v;
+    }
+
+    DELTA = G11*G22 - G12*G12;
+    A = (G22*G1 - G12*G2) * (1.0/(SCAL*DELTA));
+    C = (G11*G2 - G12*G1) * (1.0/(SCAL*DELTA));
+
+    CHI = N - (A*G1 + C*G2) * SCAL;
+    AVAL = A;
+    CVAL = C;
+    if (PBUGSW) std::printf(" LINLSQ:%16.9G%14.6G%14.6G%16.9G%11.2G\n", B, AVAL, CVAL, CHI, SCAL);
+}
 
 void MEBDEF(int IORD, int I12, int IBN, double* XNS, int IBC, double* XCS,
             int MEORD, int LXX2, int* LXX2S, int IZ,

@@ -285,10 +285,10 @@ L90:
 
             double AA, WID, FLCRIT, BARL_l, BARA_l, B_l, BARC_l, CHISQ;
             int ISIG;
-            LXTRP1(IEXTYP, NOLFIT, ISIG, IPRNT, &ALLOC(LLVALS + 1),
-                   &ALLOC(LXINTS + 1), FLCRIT, AA, WID, 0.30, 1.0e-5,
+            LXTRP1(IEXTYP, NOLFIT, ISIG, IPRNT, ALLOC_base(LLVALS + 1),
+                   ALLOC_base(LXINTS + 1), FLCRIT, AA, WID, 0.30, 1.0e-5,
                    BARL_l, BARA_l, B_l, BARC_l, DLMAX, CHISQ, LX, LDEL,
-                   &KANDM.ETAS[1], MCHN, JP, JT);
+                   &KANDM.ETAS[0], MCHN, JP, JT);
 
             if (ISIG < 0) {
                 std::printf("\n  **** ERROR RETURN FROM L-EXTRAP SUBROUTINE\n"
@@ -306,10 +306,10 @@ L90:
 
             // Phase extrapolation for power-law
             if (IEXTYP >= 2) {
-                LXTRP1(3, NOLFIT, ISIG, IPRNT, &ALLOC(LLVAL2 + 1),
-                       &ALLOC(LXINT2 + 1), FLCRIT, AA, WID, 0.30, 1.0e-5,
+                LXTRP1(3, NOLFIT, ISIG, IPRNT, ALLOC_base(LLVAL2 + 1),
+                       ALLOC_base(LXINT2 + 1), FLCRIT, AA, WID, 0.30, 1.0e-5,
                        BARL_l, CP, BP, AP, DLMAX, CHISQ, LX, LDEL,
-                       &KANDM.ETAS[1], MCHN, JP, JT);
+                       &KANDM.ETAS[0], MCHN, JP, JT);
                 if (ISIG < 0) {
                     std::printf("\n**** FOLLOWING REFERS TO PHASE EXTRAP.\n");
                     continue;
@@ -318,7 +318,7 @@ L90:
 
             // Find LIMOST for this (LX, LDEL)
             int LI = (int)LXTRPM(IEXTYP, BARA_l, B_l, BARC_l, BARL_l, DLMAX,
-                                  LX, LDEL, &KANDM.ETAS[1], WEEBOY);
+                                  LX, LDEL, &KANDM.ETAS[0], WEEBOY);
             if (PBUGSW) {
                 std::printf(" FOR CHANNEL%3d    FOR 2*JP, 2*JT, LX, LO-LI =%3d%3d%3d%3d   "
                             "ESTIMATED LARGEST SIGNIFICANT LI IS%4d\n",
@@ -566,7 +566,7 @@ L890:
                     int LO = LI + LDEL;
                     double SIZE_l;
                     LXTRP2(IEXTYP, BARA_l, B_l, BARC_l, BARL_l, DLMAX, LI,
-                           SIZE_l, LX, LDEL, &KANDM.ETAS[1]);
+                           SIZE_l, LX, LDEL, &KANDM.ETAS[0]);
                     if (SIZE_l < SMLNUM) goto L950;
 
                     double PHASE, RE_l, HIM_l;
@@ -575,7 +575,7 @@ L890:
                     if (IEXTYP >= 2) {
                         double PHASE_tmp;
                         LXTRP2(3, AP, BP, CP, DLMAX, DLMAX, LI,
-                               PHASE_tmp, LX, LDEL, &KANDM.ETAS[1]);
+                               PHASE_tmp, LX, LDEL, &KANDM.ETAS[0]);
                         PHASE = PHASE_tmp;
                     } else {
                         double ELPH = 0.5 * (atan2(ALLOC(I + 1), ALLOC(I))

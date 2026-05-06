@@ -27,6 +27,7 @@ docs/               Usage guide, keywords, and input file examples
 - [docs/Elastic.md](docs/Elastic.md) — Elastic scattering theory (optical model, Numerov, S-matrix, cross section)
 - [docs/DWBA.md](docs/DWBA.md) — Transfer reaction DWBA theory (form factor, distorted waves, spectroscopic factor)
 - [docs/Inelastic.md](docs/Inelastic.md) — Inelastic DWBA theory (collective model, Coulomb excitation, Belling expansion)
+- [docs/Output.md](docs/Output.md) — Output format, % ERROR column, convergence diagnostics, error messages
 
 ## Benchmark Results
 

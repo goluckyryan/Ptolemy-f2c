@@ -19,7 +19,6 @@ extern void LSQPOL(double* X, double* Y, double* W, double* RESID, int NPTS,
                    int NTERM, int NROW, int NCOLT);
 
 void GRDSET(int& IRTN) {
-
     // =========================================================================
     // Local variable declarations
     // =========================================================================
