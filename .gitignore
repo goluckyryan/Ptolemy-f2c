@@ -32,3 +32,5 @@ reference/
 *.swp
 *~
 .DS_Store
+
+!Cpp/*.in
