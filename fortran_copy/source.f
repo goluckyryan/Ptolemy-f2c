@@ -697,7 +697,7 @@ C
       CALL INIT8 (IAPOW, 0.D0 )
 C
 C     "APCO" AND "APSCR" ARE THE COEFFICIENT AND SCRATCH ARRAYS USED BY   660   
-C     SUBROUTINE MUELCO.  "FTIMESF" IS THE PRODUCT OF AMPLITUDES, AND
+C     SUBROUTINE MUELCO.  "FTIMESF' IS THE PRODUCT OF AMPLITUDES, AND
 C     "TEMPCROS" IS THE CROSS SECTION.
 C
       NQ = JA + MOD( JA+1, 2 )
@@ -6999,8 +6999,7 @@ C
          IF ( IC1 .EQ. 1 )  D(I) = D(I) - INCOU(I)
          N = NUMPT
  329  CONTINUE
-C
-C                                                                        6040
+C                                                                        6040   
       DET = 1/( A(1,1)*A(2,2) - A(1,2)*A(2,1) )
 C
       IF ( PBUGSW )  write (6, 353) A, D, DET
@@ -12360,11 +12359,8 @@ C
 C     STARTING VALUE FOR THIS BASIS STATE
 C
       NFIRST = MAX0( LASTNF(NWP) + NFIROF, NPTMIN+2 )
-      ILLOC(LABEL1+5) = NFIRST                                          10740
+      ILLOC(LABEL1+5) = NFIRST                                          10740   
       ISTRT = NFIRST-2
-      if (IJ .eq. 1) write(0,'(A,I3,A,I5,A,I5,A,I5,A,I5,A,I5)')
-     &  'LASTNF_CHECK: I4=',I4,' NWP=',NWP,' L1=',L1,
-     &  ' LASTNF=',LASTNF(NWP),' NFIROF=',NFIROF,' NFIRST=',NFIRST
 C
 C     LABEL FOR STORING HOMOGENEOUS WAVEFUNCTION
       II = 2*(I4-1)*NPTSAV
@@ -12389,13 +12385,6 @@ C
          ALLOC(LHOMOB+4*(I4-1)+2*I-1) = ALLOC(LWAVI+ITEMP)
          ITEMP = NSTEP
  129  CONTINUE
-      if (IJ .eq. 1) write(0,'(A,I3,A,I5,A,I3,A,I5,4(A,E13.6))')
-     &  'HOMO_STORE: I4=',I4,' NSTEP=',NSTEP,' NBACK=',NBACK,
-     &  ' ISTRT=',ISTRT,
-     &  ' HB1R=',ALLOC(LHOMOB+4*(I4-1)+0),
-     &  ' HB1I=',ALLOC(LHOMOB+4*(I4-1)+1),
-     &  ' HB2R=',ALLOC(LHOMOB+4*(I4-1)+2),
-     &  ' HB2I=',ALLOC(LHOMOB+4*(I4-1)+3)
 C
       IF(I2.NE.1)GO TO 180
 C
@@ -12490,7 +12479,7 @@ c4h     3  FLP, VMULT )
      3  FLP, VMULT )                                                    c8h
 C
 C     IF NO RHS WAS COMPUTED, THERE IS NOTHING TO DO
-C                                                                       10860
+C                                                                       10860   
       IF ( FLP .EQ. 0 )  GO TO 689
 C
       TT3=second()
@@ -13279,7 +13268,7 @@ C
 C     FIRST AND SECOND ORDER AT THE SAME VERTEX
 C
  200  RME = DSQRT( (SCHN(1)+1.D0)*(SCHN(2)+1) )
-     2   * SIXJ( SCHN(1),     SCHN(2),     LXX2,                        11620
+     2   * SIXJ( SCHN(1),     SCHN(2),     LXX2,                        11620   
      3           JNUC(IPT,2), JNUC(IPT,1), JNUC(3-IPT,1) )
      4   * (-1)**((LXX2+JNUC(1,IPT)+JNUC(2,IPT)+SCHN(3-IPT))/2)
 C
@@ -15637,7 +15626,7 @@ C
       T3 = T3-T2
       T2 = T2-T1
       TRECUR = T2-CLTIME
-      write (6, 383) CLTIME, TRECUR, T2, T3, TTOT                       13650
+      write (6, 383) CLTIME, TRECUR, T2, T3, TTOT                       13650   
  383  FORMAT ('-TIMES FOR COULOMB BORN S-MATRIX ELEMENTS',
      1    ' (SECONDS):' /
      2  ' BELLINGS:', T30, F9.3 /
@@ -17453,7 +17442,7 @@ C     WE NEED A NEW SET OF B FACTORS FOR THIS PAIR OF CHANNELS
 C     AND LAMBDA.  START COLLECTING STATISTICS.
 C
  200     NBINDX = NBINDX+1
-         BINDEX(1,NBINDX) = LAMBDA                                      15160
+         BINDEX(1,NBINDX) = LAMBDA                                      15160   
          BINDEX(2,NBINDX) = N1
          BINDEX(3,NBINDX) = N2
          BINDEX(4,NBINDX) = LMJ1
@@ -17463,7 +17452,7 @@ C
          BINDEX(9,NBINDX) = 0
          BASCUP(9,IBC) = NBINDX
          IBF = NBINDX
-      MXLXBF = MAX0( MXLXBF, LAMBDA )                                   15170
+      MXLXBF = MAX0( MXLXBF, LAMBDA )                                   15170   
          GO TO 250
 C
 C     THIS CHANNEL HAS BEEN PROCESSED, COLLECT MAXIMUM REQUIREMENTS.
@@ -17473,7 +17462,7 @@ C
          BINDEX(6,IBF) = MIN0( BINDEX(6,IBF), LMJ1 )
          BINDEX(7,IBF) = MIN0( BINDEX(7,IBF), LMJ2 )
          BASCUP(9,IBC) = IBF
-         GO TO 250                                                      15180
+         GO TO 250                                                      15180   
 C
 C     FOUND IN REVERSE ORDER
 C
@@ -20350,7 +20339,7 @@ c
  
 C
 CDLC
-CDLC     FOLLOWING TINY ALLOCATOR IS USED FOR THE "H'S"
+CDLC     FOLLOWING TINY ALLOCATOR IS USED FOR THE H'S
 CDLC
       DIMENSION SALLOC(1)                                               17570   
 CDL      COMMON /SCMALO/  SALLOC
@@ -26941,7 +26930,7 @@ C     %(1)  #(2)  &(3)  :(4)  ;(5)
 C     -(6)  +(7)  /(8)  *(9)  ((10)  (+ - NOW START NUMBERS)
 C                                    (* NOW AN ALPHA CHAR.)             23350   
 C     )(11) =(12) @(13) <(14) >(15)
-C     |(16) ï¿½(17) ?(18) "(19) .(20)  (. IS NORMALLY NUMERIC)
+C     |(16) ˆ(17) ?(18) "(19) .(20)  (. IS NORMALLY NUMERIC)
 C     ,(21)
 C
 C     \KEYEX\ TELLS NUMBER OF THE LARGEST TOKEN TO KEEP
@@ -36052,11 +36041,6 @@ C     FIND POINT WHERE ALL RENORMALIZED WAVEFUNCTION WILL BE < STEPI
 C                                                                       30920   
       AA1 = DABS(CR) + DABS(CI)
       BB1 = STEPI/AA1
-      if (PROBLM .eq. 24)
-     & write(0,'(A,I4,A,I2,4(A,E13.6),4(A,E13.6))')
-     & 'WAVELJ_CC: L=',L,' NWP=',NWP,
-     & ' F1=',F1,' G1=',G1,' F=',F,' G=',G,
-     & ' CR=',CR,' CI=',CI,' AA1=',AA1,' BB1=',BB1
       DO 629  I = ISTRT, NSTEP
          IF ( DABS(WAVR(I+1)) + DABS(WAVI(I+1)) .GE. BB1 ) GO TO 630
             WAVR(I+1) = 0.
