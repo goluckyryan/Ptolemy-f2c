@@ -33,7 +33,7 @@ rm -f fort.*
 
 | File | Reaction | E_lab | sigma_tot (mb) |
 |------|----------|-------|----------------|
-| `inelastic_40Ca_pp.in` | 40Ca(p,p') 2+ 4.0 MeV | 20 MeV | Coulomb-dominated |
+| `inelastic_40Ca_pp.in` | 40Ca(p,p') 2+ 4.0 MeV | 20 MeV | 54.604 |
 | `inelastic_40Ca_aa.in` | 40Ca(a,a') 2+, beta=0.1 | 40 MeV | 43.148 |
 | `inelastic_208Pb_aa.in` | 208Pb(a,a') 3- 2.615 MeV | 120 MeV | 1.2982 |
 
