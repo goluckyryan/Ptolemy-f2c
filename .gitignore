@@ -34,3 +34,4 @@ reference/
 .DS_Store
 
 !Cpp/*.in
+!Cpp/examples/*.in
