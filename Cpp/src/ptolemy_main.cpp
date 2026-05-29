@@ -13,6 +13,7 @@
 //
 
 #include "ptolemy_types.h"
+#include "ptolemy_alloc.h"
 #include "ptolemy_commons.h"
 #include "ptolemy_forward.h"
 #include "ptolemy_io.h"

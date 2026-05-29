@@ -325,10 +325,111 @@ void GENBNX(int IPASS, int* NBINDX, int* MBINDX, int* BINDEX, int NBASCP,
             int* BASCP, int MBASCP, int NBASDF, int* BASDF, int MBASDF)
 { std::printf(" GENBNX: stub — translate from source.f L17285-17556\n"); }
 
-void GETBFC(int ILI, int J, double* DELTA, double RASYMP, int NMBFC,
-            double* BFACIN, double* BFACOT, int NBASDF, int* BASDF,
-            int MBASDF)
-{ std::printf(" GETBFC: stub — translate from source.f L17558-17753\n"); }
+void GETBFC(int ILI, int J, double DELTA, double RASYMP, int NMBFC,
+            float* BFACIN, float* BFACOT, int MBNDX, int* BINDEX,
+            int MCHNDF, int* CHNDEF, int MCHNVL, double* CHNVAL,
+            int MBASDF, int* BASDEF, int NBASDF, float* FG)
+{
+    // Computes the B-factors at RASYMP-DELTA from those at RASYMP
+    // source.f L17558-17753
+    // BFACIN is REAL*4(2, NMBFC, *) — 1-based on ILI dimension
+    // BFACOT is REAL*4(2, 2, NMBFC) — 1-based
+    // BINDEX is INTEGER(MBNDX, *) — 1-based
+    // CHNDEF is INTEGER(MCHNDF, *) — 1-based
+    // CHNVAL is REAL*8(MCHNVL, *) — 1-based
+    // BASDEF is INTEGER(MBASDF, NBASDF) — 1-based
+    // FG is REAL*4(4, NBASDF, *) — 1-based (c4f path)
+
+    // Access macros for column-major Fortran arrays (1-based)
+    #define BFACIN_F(ic, ib, ili)  BFACIN[((ili)-1)*NMBFC*2 + ((ib)-1)*2 + ((ic)-1)]
+    #define BFACOT_F(ic, ir, ib)   BFACOT[((ib)-1)*2*2 + ((ir)-1)*2 + ((ic)-1)]
+    #define BINDEX_F(i, j)         BINDEX[((j)-1)*MBNDX + ((i)-1)]
+    #define CHNDEF_F(i, j)         CHNDEF[((j)-1)*MCHNDF + ((i)-1)]
+    #define CHNVAL_F(i, j)         CHNVAL[((j)-1)*MCHNVL + ((i)-1)]
+    #define BASDEF_F(i, j)         BASDEF[((j)-1)*MBASDF + ((i)-1)]
+    #define FG_F(i, ib, ili)       FG[((ili)-1)*NBASDF*4 + ((ib)-1)*4 + ((i)-1)]
+
+    int DBUGSW = (INTGER.IPRINT % 10) >= 5;
+
+    int& NBINDX = GRIDCM.INTOFF;  // GRIDCM overlay for CC
+
+    double FAC = 3.0 * INTGER.IZS[1] * INTGER.IZS[3] * CNSTNT.HBARC * DELTA
+               / (4.0 * CNSTNT.AFINE) * 2.0 * FLOAT_common.AM / (CNSTNT.HBARC * CNSTNT.HBARC);
+
+    if (DBUGSW)
+        std::printf(" BFACTORS:%5d%5d/2%16.6G%16.6G%16.6G\n", ILI, J, DELTA, RASYMP, FAC);
+
+    // Loop over all sets of BFACTORS
+    for (int IBSET = 1; IBSET <= NBINDX; IBSET++) {
+        int LX     = BINDEX_F(1, IBSET);
+        int IC1    = BINDEX_F(2, IBSET);
+        int IC2    = BINDEX_F(3, IBSET);
+        int MXLMJ1 = BINDEX_F(4, IBSET);
+        int MNLMJ1 = BINDEX_F(6, IBSET);
+        int LB     = BINDEX_F(8, IBSET);
+
+        int MINL1 = (MNLMJ1 + J) / 2;
+
+        double AK1 = CHNVAL_F(1, IC1);
+        int IB1ST   = CHNDEF_F(8, IC1);
+        int IB1END  = IB1ST + CHNDEF_F(9, IC1) - 1;
+        double AK2 = CHNVAL_F(1, IC2);
+        int IB2ST   = CHNDEF_F(8, IC2);
+        int IB2END  = IB2ST + CHNDEF_F(9, IC2) - 1;
+
+        if (DBUGSW)
+            std::printf(" CHANNELS%4d%4d     LB =%6d\n", IC1, IC2, LB);
+
+        double FACTOR = FAC / std::sqrt(AK1 * AK2);
+
+        // Loop through both sets of basis states
+        for (int IB1 = IB1ST; IB1 <= IB1END; IB1++) {
+            int L1 = J + BASDEF_F(3, IB1);
+            if (L1 < 0) continue;
+            L1 = L1 >> 1;  // ishft(L1, -1)
+
+            for (int IB2 = IB2ST; IB2 <= IB2END; IB2++) {
+                int L2 = J + BASDEF_F(3, IB2);
+                if (L2 < 0) continue;
+                L2 = L2 >> 1;
+                if (std::abs(L1 - L2) > LX) continue;
+                int I = (LX + 1) * (L1 - MINL1) + LX - L1 + L2;
+                I = (I >> 1) + LB;
+
+                // Use one trapezoid to integrate from RASYMP to RASYMP-DELTA
+                BFACOT_F(1, 1, I) = BFACIN_F(1, I, ILI) + (float)(FACTOR * (
+                    (FG_F(1,IB1,ILI) * FG_F(2,IB2,ILI) -
+                     FG_F(2,IB1,ILI) * FG_F(1,IB2,ILI)) / std::pow(RASYMP - DELTA, LX + 1)
+                  + (FG_F(3,IB1,ILI) * FG_F(4,IB2,ILI) -
+                     FG_F(4,IB1,ILI) * FG_F(3,IB2,ILI)) / std::pow(RASYMP, LX + 1)));
+
+                BFACOT_F(1, 2, I) = BFACIN_F(1, I, ILI);
+
+                BFACOT_F(2, 1, I) = BFACIN_F(2, I, ILI) + (float)(FACTOR * (
+                    (FG_F(1,IB2,ILI) * FG_F(1,IB1,ILI) +
+                     FG_F(2,IB2,ILI) * FG_F(2,IB1,ILI)) / std::pow(RASYMP - DELTA, LX + 1)
+                  + (FG_F(3,IB2,ILI) * FG_F(3,IB1,ILI) +
+                     FG_F(4,IB2,ILI) * FG_F(4,IB1,ILI)) / std::pow(RASYMP, LX + 1)));
+
+                BFACOT_F(2, 2, I) = BFACIN_F(2, I, ILI);
+
+                if (DBUGSW)
+                    std::printf("%4d%4d%4d%20.10G%18.10G%20.10G%18.10G\n",
+                        L1, L2, I,
+                        (double)BFACOT_F(1,1,I), (double)BFACOT_F(2,1,I),
+                        (double)BFACOT_F(1,2,I), (double)BFACOT_F(2,2,I));
+            }
+        }
+    }
+
+    #undef BFACIN_F
+    #undef BFACOT_F
+    #undef BINDEX_F
+    #undef CHNDEF_F
+    #undef CHNVAL_F
+    #undef BASDEF_F
+    #undef FG_F
+}
 
 void SETFIT(int& IRET)
 { IRET = 0; std::printf(" SETFIT: stub — translate from source.f L32576-32878\n"); }
@@ -343,6 +444,121 @@ void SETBFC(int NBINDX, int MBINDX, int* BINDEX, int MCHNDF, int* CHNDF_i,
 
 void SETBRN(int NBINDX, int MBINDX, int* BINDEX, int MCHNDF, int* CHNDF_i,
             int MBASDF, int* BASDF_i, int MBASCP, int* BASCP_i, float* BASCP_f,
-            int NUMLIS, double* LIS, int LMIN2, float* CL2FF,
-            double* INDXS_arr, double* DELSR, double* DELSI)
-{ std::printf(" SETBRN: stub — translate from source.f L31800-32000\n"); }
+            int NUMLIS, int* LIS, int JMIN, float* FF2INT,
+            int* INDXS, double* SMATR, double* SMATI)
+{
+    #define BINDEX_B(i, j) BINDEX[((j)-1)*MBINDX + ((i)-1)]
+    #define CHNDEF_B(i, j) CHNDF_i[((j)-1)*MCHNDF + ((i)-1)]
+    #define BASDEF_B(i, j) BASDF_i[((j)-1)*MBASDF + ((i)-1)]
+    #define BASCUP_B(i, j) BASCP_i[((j)-1)*MBASCP + ((i)-1)]
+    #define RBASCP_B(i, j) BASCP_f[((j)-1)*MBASCP + ((i)-1)]
+
+    const double ROOT2 = 1.4142135623731e0;
+
+    bool PRNTSW = (INTGER.IPRINT % 10) >= 2;
+    int L1MJ = 0;
+
+    for (int IBF = 1; IBF <= NBINDX; IBF++) {
+        int LB = BINDEX_B(9, IBF);
+        if (LB == 0) continue;
+        int LX = BINDEX_B(1, IBF);
+        int IC1 = BINDEX_B(2, IBF);
+        int IC2 = BINDEX_B(3, IBF);
+        int MXLMJ1 = BINDEX_B(4, IBF);
+        int MNLMJ1 = BINDEX_B(6, IBF);
+
+        int NM1FRJ = (MXLMJ1 - MNLMJ1) / 4 + 1;
+        int NMBFRJ = (LX + 1) * NM1FRJ;
+
+        int MCHN = CHNDEF_B(1, IC2);
+        int IB2ST = CHNDEF_B(8, IC2);
+        int IB2ND = IB2ST + CHNDEF_B(9, IC2) - 1;
+        int KSMAT = CHNDEF_B(10, IC2);
+        int NSPLI = CHNDEF_B(11, IC2);
+        int KINDXS = CHNDEF_B(12, IC2) + 3 + 3 * LX;
+        int KBASE = KSMAT + (int)INDXS[KINDXS - 3];
+        int LDELMN = (int)INDXS[KINDXS - 2];
+        int LIMOST = CHNDEF_B(15, IC2);
+        int JMOST = 2 * LIMOST;
+        int NUMJ = (JMOST - JMIN) / 2 + 1;
+
+        bool BADSW = true;
+
+        for (int IB2 = IB2ST; IB2 <= IB2ND; IB2++) {
+            int L2MJ = BASDEF_B(3, IB2);
+            int ICUPST = BASDEF_B(4, IB2);
+            int ICUPND = ICUPST + BASDEF_B(5, IB2) - 1;
+            int LDEL = (L2MJ - L1MJ) / 2;
+            int KOFFS = KBASE + ((LDEL - LDELMN) >> 1);
+
+            double FAC1 = 0;
+            for (int ICUP = ICUPST; ICUP <= ICUPND; ICUP++) {
+                if (abs(BASCUP_B(9, ICUP)) == IBF)
+                    FAC1 = FAC1 + (double)RBASCP_B(6, ICUP);
+            }
+            if (FAC1 == 0) continue;
+            BADSW = false;
+
+            FAC1 = FAC1 / CNSTNT.RT4PI;
+            if (BASDEF_B(7, IB2) == 2) FAC1 = ROOT2 * FAC1;
+            int LXP1 = LX + 1;
+            if (!(LXP1 & 2)) FAC1 = -FAC1;
+
+            int INDX1 = LB + ((LDEL + LX) >> 1);
+
+            for (int NJ = 1; NJ <= NUMJ; NJ++) {
+                int J = 2 * NJ + (JMIN - 2);
+                int L1X2 = J + L1MJ;
+                int L2X2 = J + L2MJ;
+                if (L2X2 < 2 * LX - L1X2) continue;
+                int I = INDX1 + NMBFRJ * (NJ - 1);
+                FF2INT[I - 1] = (float)(FAC1 * (double)FF2INT[I - 1]
+                    * fabs(CLEBSH(L1X2, 2 * LX, 0, 0, L2X2, 0)));
+            }
+
+            bool IMAGSW = !(LX & 1);
+
+            if (PRNTSW)
+                std::printf("\n COMPARASON OF C.C. AND COULOMB BORN"
+                    " S MATRICES FOR CHANNEL%3d, BASIS STATE%4d"
+                    "     LX =%3d     LOUT-LIN =%3d\n"
+                    "\n    J   L IN  L OUT%13sS(C.C.)%17sS(BORN)"
+                    "%13sDIFFERENCE%12s|DIFFERENCE|%9s%%\n",
+                    MCHN, IB2, LX, LDEL, "", "", "", "", "");
+
+            for (int ILI = 1; ILI <= NUMLIS; ILI++) {
+                int J = 2 * LIS[ILI - 1];
+                int L1X2 = J + L1MJ;
+                int L2X2 = J + L2MJ;
+                if (L2X2 < 2 * LX - L1X2) continue;
+                int L1 = L1X2 >> 1;
+                int L2 = L2X2 >> 1;
+                int I1 = (ILI - 1) * NSPLI + KOFFS;
+                int I2 = INDX1 + NMBFRJ * ((J - JMIN) >> 1);
+                double SR = SMATR[I1 - 1];
+                double SI = SMATI[I1 - 1];
+                double SBORN = (double)FF2INT[I2 - 1];
+                if (!IMAGSW)
+                    SMATR[I1 - 1] = SR - SBORN;
+                else
+                    SMATI[I1 - 1] = SI - SBORN;
+
+                if (PRNTSW) {
+                    double SMAG = sqrt(SMATR[I1 - 1] * SMATR[I1 - 1] + SMATI[I1 - 1] * SMATI[I1 - 1]);
+                    double PERCNT = 100.0 * SMAG / (fabs(SBORN) + 1.0e-20);
+                    std::printf("%5d/2%5d%6d%15.5G%13.5G%16.5G%16.5G%13.5G%14.4G%13.2f\n",
+                        J, L1, L2, SR, SI, SBORN, SMATR[I1 - 1], SMATI[I1 - 1], SMAG, PERCNT);
+                }
+            }
+        }
+        if (BADSW)
+            std::printf("\n *** INTERNAL ERROR IN SETBRN:%8d%8d%8d%8d%8d%8d%8d\n",
+                IBF, LB, IC1, IC2, LX, IB2ST, IB2ND);
+    }
+
+    #undef BINDEX_B
+    #undef CHNDEF_B
+    #undef BASDEF_B
+    #undef BASCUP_B
+    #undef RBASCP_B
+}

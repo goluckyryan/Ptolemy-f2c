@@ -337,7 +337,7 @@ L210:
 L215:
         {
             int IPT = ILLOC(K + 7);
-            if (ILLOC(K + 9) != (int)NOTDEF) goto L229;
+            if (ILLOC(K + 9) != NOTDEF_INT) goto L229;
 
             //
             // THIS IS A NEW RADIAL FORM
@@ -376,7 +376,7 @@ L229:   ;
         ILLOC(K + 10) = 0;
         goto L259;
 L235:
-        if (ILLOC(K + 10) != (int)NOTDEF) goto L259;
+        if (ILLOC(K + 10) != NOTDEF_INT) goto L259;
         {
             IORDER = ILLOC(K + 2);
             IMULT  = ILLOC(K + 3);
@@ -395,7 +395,6 @@ L259:   ;
 
     std::printf("0THERE ARE%3d NUCLEAR AND%3d COULOMB FORM-FACTOR RADIAL FUNCTIONS.\n",
                 NNUCFF, NCOUFF);
-
     //
     // NUCLEAR STORAGE FOR DERIVATIVE OF W.S.
     //

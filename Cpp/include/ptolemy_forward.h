@@ -413,13 +413,23 @@ void A12(int LI, int LXMIN_a, int LXMAX_a, int LMIN_a, int LMAX_a, double* XLAM,
          double* XLOTMP, int* LXTMP, int LHSM1, int LA12VL, int IPRINT, int INIT,
          int* INDXDW, int& NDW, int& NI, int* IDWFI, int* IDWFO);
 void CCDUMP();
-void CCMTCH(int ILI, int J, int IB, double* SMATS, double* CFAC, int NBASDF,
-            double* FG, int NBAK, double* FG1);
-void CCONV(double* CSMATS, int ITR, int& ITEST, int NBASDF, double* PADE,
-           int NPADE);
+void CCMTCH(int ILI, int J, int IB, double* SMATS, double* CFAC_out,
+            int NBASDF_arg, double* WAVR, double* WAVI, int NPTSAV,
+            double* HOMO, int MBASDF_arg, int* BASDEF,
+            int MBASCP_arg, int* BASCUP, float* RBASCP,
+            int MCHNVL, double* CHNVAL,
+            float* BFACS, int MBNDX, int* BINDEX,
+            float* FG, double VSCALE);
+void CCONV(double* CSMATS, int ITR, int& ITEST, int NBASDF_arg,
+           double* PADE, int MAXIT1, double* ELAST, double* EXR,
+           double* EXI, int* INDXS, int* CHNDEF, int MCHNDF_arg,
+           int* BASDEF, int MBASDF_arg, int IJ, int NCHNDF_arg,
+           int JT, int& NLINE, int& IHEAD, int& NFLOP);
 void COUPLN(int& IRET);
 void DRIVE(double* RHSR, double* RHSI, int I5, int I6, int NFIRST,
-           int ITR, int MBASCP, double* SMATS);
+           int ITR, int MBASCP_arg, int* BASCUP, float* RBASCP,
+           float* NUCH, float* COULH, int NPTIN, int NPTSAV,
+           double* INHR, double* INHI, double& FLP, double VMULT);
 void INELDC(int& IRTN);
 void INELD2(float TSTART, int NUMHIN, int NUMTIM, int NUMTRM, int NUMANG,
             int NUM3, int NUM4, int NUM5, int NUM6);
@@ -449,9 +459,10 @@ void DERCHK(int NPARA, int NPTS, double STEP, double* PARAM, double* FS,
             double* FGRAD, double* TGRAD, double* FSAVE);
 void GENBNX(int IPASS, int* NBINDX, int* MBINDX, int* BINDEX, int NBASCP,
             int* BASCP, int MBASCP, int NBASDF, int* BASDF, int MBASDF);
-void GETBFC(int ILI, int J, double* DELTA, double RASYMP, int NMBFC,
-            double* BFACIN, double* BFACOT, int NBASDF, int* BASDF,
-            int MBASDF);
+void GETBFC(int ILI, int J, double DELTA, double RASYMP, int NMBFC,
+            float* BFACIN, float* BFACOT, int MBNDX, int* BINDEX,
+            int MCHNDF, int* CHNDEF, int MCHNVL, double* CHNVAL,
+            int MBASDF, int* BASDEF, int NBASDF, float* FG);
 void SETFIT(int& IRET);
 void SETBFC(int NBINDX, int MBINDX, int* BINDEX, int MCHNDF, int* CHNDF_i,
             float* CHNDF_f, int* NUMJS, int LMIN2, double* R2S, int LMXMX,
@@ -470,9 +481,11 @@ void AKFCR(int L1, int J1, int L2, int J2, int LXX2, int J, double& AKREST);
 void CUBMAP(int MAPTYP, double XLO, double XMID, double XHI, double GAMMA,
             double* ARGS, double* WTS, int NPTS);
 void CUPAB(int IORDER, int IPT, int* LXX2S, int LXX2,
-           int JIN, int JOUT, int JBIG, int LX, double& COUP);
-void CUPSPN(int& IRTN, int LXX2, int IPT, double* SCHN,
-            int JIN, int JOUT, int JBIGIN, int JBIGOUT, double& COUP);
+           double* RMENUC, double* RMECOU, double* RNUC, int* IZPT,
+           double& RMEGN, double& RMEGC, int& IPT1);
+void CUPSPN(int& IRTN, int LXX2, int IPT, int* SCHN,
+            int* LXX2S, int* JNUC, double RMEGN, double RMEGC,
+            double& XN, double& XC);
 void DUMMY1();
 void DUMMY2();
 void EPSLON(double* XIN, int N, double* FRET, double& DEPS, double& DERR, int& IER);

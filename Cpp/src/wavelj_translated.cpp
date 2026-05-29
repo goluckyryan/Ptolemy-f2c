@@ -117,6 +117,9 @@ L50:
     WAVCOM.NFIRST = -NUMPTS;
     ISTRT = WAVCOM.NFIRST - 2;
     if (NUMPTS < 0) goto L220;
+    if (SWITCH.PROBLM == 24)
+        std::fprintf(stderr, "WAVELJ entry: L=%d NWP=%d NUMPTS=%d LASTL[%d]=%d LASTNF[%d]=%d\n",
+                     L, NWP, NUMPTS, NWP, WAVCOM.LASTL[NWP], NWP, WAVCOM.LASTNF[NWP]);
     WAVCOM.NFIRST = WAVCOM.LASTNF[NWP];
     ISTRT = WAVCOM.NFIRST - 2;
     if (L >= WAVCOM.LASTL[NWP]) goto L160;
@@ -405,6 +408,15 @@ L520: ;
 //
     AA1 = DABS(CR) + DABS(CI);
     BB1 = WAVCOM.STEPI / AA1;
+    if (SWITCH.PROBLM == 24)
+        std::fprintf(stderr, "WAVELJ norm: L=%d NWP=%d CR=%.6E CI=%.6E AA1=%.6E BB1=%.6E STEPI=%.6E ISTRT=%d NSTEP=%d\n",
+                     L, NWP, CR, CI, AA1, BB1, WAVCOM.STEPI, ISTRT, NSTEP);
+    if (SWITCH.PROBLM == 24)
+        std::fprintf(stderr, "  F=%.6E G=%.6E F1=%.6E G1=%.6E SJR=%.6E SJI=%.6E\n",
+                     F, G, F1, G1, SJR, SJI);
+    if (SWITCH.PROBLM == 24)
+        std::fprintf(stderr, "  WAVR[NSTEP+1]=%.6E WAVI[NSTEP+1]=%.6E WAVR[N-NBACK+1]=%.6E WAVI[N-NBACK+1]=%.6E\n",
+                     WAVR[NSTEP+1], WAVI[NSTEP+1], WAVR[NSTEP+1-WAVCOM.NBAKCM], WAVI[NSTEP+1-WAVCOM.NBAKCM]);
     for (I = ISTRT; I <= NSTEP; I++) {
         if (DABS(WAVR[I + 1]) + DABS(WAVI[I + 1]) >= BB1) goto L630;
         WAVR[I + 1] = 0.;
@@ -418,6 +430,9 @@ L630:
 //     SET IT BACK SOME FOR LINKULES
 //
     I = MAX0(I + 1, 2);
+    if (SWITCH.PROBLM == 24)
+        std::fprintf(stderr, "WAVELJ exit: L=%d NWP=%d LASTNF=%d (loop exited at I=%d)\n",
+                     L, NWP, I, ISTRT);
     WAVCOM.LASTNF[NWP] = I;
     WAVCOM.LASTL[NWP] = L;
     BADSW = ((AA1 > CNSTNT.BIGNUM * 1.e-10 && WAVCOM.NFIRST > 2) ||

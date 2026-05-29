@@ -166,13 +166,14 @@ L90:
     KSMAT = 0;
     KSMAT2 = 0;
     JMOST = 0;
+    int LCHNDF_cc = 0, LTOCSV = 0, LBINDX_cc = 0, LCHNSV = 0;
     if (CCSW) {
-        int LCHNDF = FACFR4 * (Z[CCBLK.ICHNDF] - 1) + 1;
-        NCHNDF = ILLOC(LCHNDF);
-        MCHNDF = ILLOC(LCHNDF + 1);
-        // LCHNDF = LCHNDF + ILLOC(LCHNDF+2) + MCHNDF;
-        // LTOCSV = LTOCS;
-        // LBINDX = FACFR4*(Z[IBINDX_l]-1);
+        LCHNDF_cc = FACFR4 * (Z[CCBLK.ICHNDF] - 1) + 1;
+        NCHNDF = ILLOC(LCHNDF_cc);
+        MCHNDF = ILLOC(LCHNDF_cc + 1);
+        LCHNDF_cc = LCHNDF_cc + ILLOC(LCHNDF_cc + 2) + MCHNDF;
+        LTOCSV = LTOCS;
+        LBINDX_cc = FACFR4 * (Z[IBINDX_l] - 1);
     }
 
     // ========================================================================
@@ -182,14 +183,20 @@ L90:
         MCHN = NCHN;
         LMAXL = LMAX;
         if (CCSW) {
-            // CC setup (not implemented for basic DWBA)
+            MCHN = ILLOC(LCHNDF_cc);
+            KANDM.ETAS[2] = (double)ALLOC4(LCHNDF_cc + 5);
+            KSMAT = ILLOC(LCHNDF_cc + 9);
+            NSPLI = ILLOC(LCHNDF_cc + 10);
+            LTOCS = LTOCSV + ILLOC(LCHNDF_cc + 12);
+            LIMOST = ILLOC(LCHNDF_cc + 14);
+            if (LIMOST == NOTDEF_INT) LIMOST = LMAX;
         }
 
         // L110: if (!XTRPSW) goto L290
         if (!XTRPSW) goto L290;
 
         // Pass 1 extrapolation fitting loop (XTRPSW=true path)
-        LTOCS = Z[ITOCS] * FACFR4 - FACFR4;
+        if (!CCSW) LTOCS = Z[ITOCS] * FACFR4 - FACFR4;
         LLIS = FACFR4 * Z[ILIS] - FACFR4;
         for (KOFFS = 1; KOFFS <= NSPLI; KOFFS++) {
             JT = ILLOC(LTOCS + 4 * KOFFS);
@@ -347,7 +354,11 @@ L290:
         LNSMAT = NSPLI * (LIMOST - LMIN + 1);
 
         if (CCSW) {
-            // CC: store KSMAT2 and LIMOST in channel descriptor
+            ILLOC(LCHNDF_cc + 13) = KSMAT2;
+            ILLOC(LCHNDF_cc + 14) = LIMOST;
+            LCHNDF_cc = LCHNDF_cc + MCHNDF;
+            LWORK = Z[IWORK] - MWORK + MWORK * NSPLI;
+            // Note: LWORK advancement handled below by not resetting it
         }
 
         KSMAT2 = KSMAT2 + LNSMAT;
@@ -478,7 +489,11 @@ L700:
 
     KSMAT2 = 0;
     if (CCSW) {
-        // CC setup for pass 2
+        LCHNDF_cc = FACFR4 * (Z[CCBLK.ICHNDF] - 1) + 1;
+        LCHNDF_cc = LCHNDF_cc + ILLOC(LCHNDF_cc + 2) + MCHNDF;
+        LCHNSV = LCHNDF_cc;
+        LTOCSV = LTOCS;
+        LBINDX_cc = FACFR4 * (Z[IBINDX_l] - 1);
         LELOUT = LELIN;
         goto L710;
     }
@@ -487,7 +502,13 @@ L710:
     for (int NCHN = 2; NCHN <= NCHNDF; NCHN++) {
         MCHN = NCHN;
         if (CCSW) {
-            // CC channel setup
+            MCHN = ILLOC(LCHNDF_cc);
+            KANDM.ETAS[2] = (double)ALLOC4(LCHNDF_cc + 5);
+            KSMAT = ILLOC(LCHNDF_cc + 9);
+            NSPLI = ILLOC(LCHNDF_cc + 10);
+            LTOCS = LTOCSV + ILLOC(LCHNDF_cc + 12);
+            KSMAT2 = ILLOC(LCHNDF_cc + 13);
+            LIMOST = ILLOC(LCHNDF_cc + 14);
         }
 
         // L720: loop over (JT, JP, LX, LO-LI)
@@ -623,8 +644,28 @@ L950:
             goto L980;
 
 L960:
-            // CC Born add-back (stub for now)
-            goto L980;
+            if (NMFFAC_l == 0 || !XTRPSW) goto L980;
+            {
+                int LMAXP1 = LMAX + 1;
+                int LCL2FF = FACFR4 * (Z[ICL2FF_l] - 1);
+                for (int IB = 1; IB <= NBINDX_l; IB++) {
+                    int LBIN = LBINDX_cc + (IB - 1) * MBINDX_l;
+                    int LB = ILLOC(LBIN + 9);
+                    if (LB == 0) continue;
+                    if (ILLOC(LBIN + 1) != LX || ILLOC(LBIN + 3) != NCHN) continue;
+                    int NMBFRJ = (LX + 1) * ((ILLOC(LBIN + 4) - ILLOC(LBIN + 6)) / 4 + 1);
+                    int INDX1 = LB + ((LDEL + LX) >> 1);
+                    bool oddLX = (LX & 1) != 0;
+                    for (int LI = LMAXP1; LI <= LIMOST; LI++) {
+                        int I = LRDINT_l + 2 * NSPLI * (LI - LMIN);
+                        float SBORN = ALLOC4(LCL2FF + INDX1 + NMBFRJ * (LI - LMIN));
+                        if (oddLX)
+                            ALLOC4(I) = ALLOC4(I) + SBORN;
+                        else
+                            ALLOC4(I + 1) = ALLOC4(I + 1) + SBORN;
+                    }
+                }
+            }
 
             // Unitarity contributions
 L980:
@@ -636,7 +677,8 @@ L980:
         } // end KOFFS loop (989)
 
         if (CCSW) {
-            // Advance to next channel
+            LCHNDF_cc = LCHNDF_cc + MCHNDF;
+            LWORK = LWORK + MWORK * NSPLI;
         }
     } // end NCHN loop (999)
 
@@ -659,11 +701,18 @@ L2800:
 
     LTOCS = Z[ITOCS] * FACFR4 - FACFR4;
     LWORK = Z[IWORK] - MWORK;
+    if (CCSW) {
+        LCHNDF_cc = LCHNSV;
+        LTOCSV = LTOCS;
+    }
 
     for (int NCHN = 2; NCHN <= NCHNDF; NCHN++) {
         MCHN = NCHN;
         if (CCSW) {
-            // CC channel setup
+            MCHN = ILLOC(LCHNDF_cc);
+            NSPLI = ILLOC(LCHNDF_cc + 10);
+            LTOCS = LTOCSV + ILLOC(LCHNDF_cc + 12);
+            LIMOST = ILLOC(LCHNDF_cc + 14);
         }
 
         for (KOFFS = 1; KOFFS <= NSPLI; KOFFS++) {
@@ -690,6 +739,7 @@ L2800:
         if (CCSW) {
             std::printf(" \n");
             LWORK = LWORK + NSPLI * MWORK;
+            LCHNDF_cc = LCHNDF_cc + MCHNDF;
         }
     }
 

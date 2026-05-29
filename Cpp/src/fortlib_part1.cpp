@@ -160,8 +160,8 @@ static struct RootisInit {
 static int ccnfrc_nmax = 0;
 
 void CCNFRC(int NUMPTS, complex16* XS, complex16* YS) {
-    // IMPLICIT REAL*8 (A-H, O-Z)
-    // COMPLEX*16 XS, YS, D, XJ, YJ
+    // Fortran uses 1-based arrays; C++ uses 0-based.
+    // All indices shifted by -1 from the original Fortran.
 
     complex16 D, XJ, YJ;
     double TINY = 1.0e-14;
@@ -170,11 +170,9 @@ void CCNFRC(int NUMPTS, complex16* XS, complex16* YS) {
 
     ccnfrc_nmax = NUMPTS - 1;
 
-    // Search for the largest Y
     COMP = -1.0;
-    for (I = 1; I <= NUMPTS; I++) {
+    for (I = 0; I < NUMPTS; I++) {
         D = YS[I];
-        // DR(1)**2 + DR(2)**2 = |D|^2 via EQUIVALENCE (DR(1),D)
         TEMP = std::norm(D);
         if (TEMP <= COMP) continue;
         COMP = TEMP;
@@ -182,21 +180,17 @@ void CCNFRC(int NUMPTS, complex16* XS, complex16* YS) {
     }
     if (ccnfrc_nmax <= 0) return;
 
-    // The first coefficient is the biggest Y.
-    // Exchange the first with the biggest.
     YJ = YS[K];
-    if (K != 1) {
-        YS[K] = YS[1];
-        YS[1] = YJ;
+    if (K != 0) {
+        YS[K] = YS[0];
+        YS[0] = YJ;
         XJ = XS[K];
-        XS[K] = XS[1];
-        XS[1] = XJ;
+        XS[K] = XS[0];
+        XS[0] = XJ;
     }
 
-    // Calculate the candidates for the second coefficient,
-    // and search for the largest.
     COMP = -1.0;
-    for (I = 2; I <= NUMPTS; I++) {
+    for (I = 1; I < NUMPTS; I++) {
         D = 1.0 - YJ / YS[I];
         YS[I] = D;
         TEMP = std::norm(D);
@@ -205,11 +199,7 @@ void CCNFRC(int NUMPTS, complex16* XS, complex16* YS) {
         K = I;
     }
 
-    // Loop through the rest of the coefficients.
-    for (J = 2; J <= NUMPTS; J++) {
-
-        // Exchange the largest candidate with the J-th, and
-        // finish calculating this coefficient.
+    for (J = 1; J < NUMPTS; J++) {
         XJ = XS[K];
         YJ = YS[K];
         if (K != J) {
@@ -219,18 +209,15 @@ void CCNFRC(int NUMPTS, complex16* XS, complex16* YS) {
         }
         YJ = YJ / (XS[J-1] - XJ);
         YS[J] = YJ;
-        if (J == NUMPTS) goto label_450;
+        if (J == NUMPTS - 1) goto label_450;
 
-        // Quit if this coefficient is tiny.
         if (COMP < TINY) goto label_430;
 
-        // Calculate the candidates for the next coefficient,
-        // and search for the largest.
         {
             int JP1 = J + 1;
             COMP = -1.0;
             XJ = XS[J-1];
-            for (I = JP1; I <= NUMPTS; I++) {
+            for (I = JP1; I < NUMPTS; I++) {
                 D = 1.0 + YJ * (XS[I] - XJ) / YS[I];
                 YS[I] = D;
                 TEMP = std::norm(D);
@@ -239,15 +226,12 @@ void CCNFRC(int NUMPTS, complex16* XS, complex16* YS) {
                 K = I;
             }
         }
-    } // DO 400
+    }
 
-    // End of loop through coefficients.
-    // (It never gets here anyway.)
     return;
 
-    // The input function appears to be a continued fraction exactly
 label_430:
-    ccnfrc_nmax = J - 1;
+    ccnfrc_nmax = J;
     std::printf("\n**** WARNING:  CONTINUED FRACTION USED ONLY%3d OUT OF%3d POINTS.\n",
                ccnfrc_nmax, NUMPTS);
 
@@ -256,15 +240,15 @@ label_450:
 }
 
 void CCONTF(int NUMPTS, complex16* XS, complex16* YS, complex16 X, complex16& Y) {
-    // label 500
+    // 0-based indexing (shifted from Fortran 1-based)
     Y = complex16(0.0, 0.0);
     if (ccnfrc_nmax < 1) goto label_520;
     for (int J = 1; J <= ccnfrc_nmax; J++) {
-        int K = ccnfrc_nmax - J + 1;
-        Y = YS[1+K] * (X - XS[K]) / (1.0 + Y);
+        int K = ccnfrc_nmax - J;
+        Y = YS[K+1] * (X - XS[K]) / (1.0 + Y);
     }
 label_520:
-    Y = YS[1] / (1.0 + Y);
+    Y = YS[0] / (1.0 + Y);
     return;
 }
 
@@ -1466,15 +1450,15 @@ label_300:
     if (M == 3) goto label_600;
 
 label_400:
-    DSG[1] = X*R*(X+EZ)*((X-EZ1)+EZ2);
+    DSG[0] = X*R*(X+EZ)*((X-EZ1)+EZ2);
     goto label_610;
 
 label_500:
-    DSG[1] = X*R;
+    DSG[0] = X*R;
     goto label_610;
 
 label_600:
-    DSG[1] = DATAN(X)/2.0e0 + X*(DLOG(1.0e0+XSQ)/2.0e0 + R);
+    DSG[0] = DATAN(X)/2.0e0 + X*(DLOG(1.0e0+XSQ)/2.0e0 + R);
 
     //
     // SL(ETA)=SO(ETA)+SUM(I=1TOL)DATAN(ETA/I)
@@ -1484,16 +1468,16 @@ label_610:
     R = 1.0e0;
     for (I = 1; I <= NO; I++) {
         RSQ = X/R;
-        DSG[I+1] = DSG[I] + DATAN(RSQ);
+        DSG[I] = DSG[I-1] + DATAN(RSQ);
         R = R + 1.0e0;
     } // 620
     if (ETA >= 0.0e0) goto label_660;
     for (I = 1; I <= NO; I++) {
-        DSG[I+1] = -DSG[I+1];
+        DSG[I] = -DSG[I];
     } // 640
 
 label_650:
-    if (ETA < 0.0e0) DSG[1] = -DSG[1];
+    if (ETA < 0.0e0) DSG[0] = -DSG[0];
 
 label_660:
     return;

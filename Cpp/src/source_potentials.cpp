@@ -23,6 +23,21 @@ extern void INIT4i(int I, int i4);
 extern void SETLOG(int N);
 extern double second();
 extern void VCSQ12(double RVAL, double& X, int NWP);
+extern void SETBFC_full(
+    int NBINDX, int MBINDX, int* BINDEX,
+    int MCHNDF, int* CHNDEF_i, float* RCHNDF,
+    int NUMLIS, int* LIS, double* R2S_arg, int LMXMX,
+    double* SIG1, double* SIG2,
+    double RLOWER, int ALLSW, int IRORC,
+    int NMBFAC, float* BFAC,
+    double* FFWORK, int IDIM1, int LDLDIM,
+    double* WRKWK, double* FIWORK, int IDIM2,
+    double* WRKST, int& IRET, double& CLTIME);
+extern void SETBRN(int NBINDX, int MBINDX, int* BINDEX,
+    int MCHNDF, int* CHNDF_i, int MBASDF, int* BASDF_i,
+    int MBASCP, int* BASCP_i, float* BASCP_f,
+    int NUMLIS, int* LIS, int JMIN, float* FF2INT,
+    int* INDXS, double* SMATR, double* SMATI);
 
 // ============================================================================
 // WOODSX — Computes Woods-Saxon type potentials
@@ -841,28 +856,133 @@ L900:
 // ============================================================================
 void FFACST(int& IRTN)
 {
+    auto* Z = LOCPTRS.Z;
+    auto& FACFR4 = ALLOCS.FACFR4;
+
+    // GRIDCM overlay for FFACST context (different field names than GRDSET view)
+    int* GRIDCM_int = reinterpret_cast<int*>(&GRIDCM.IMSVAL);
+    int& IBINDX = GRIDCM_int[0];
+    int& MBINDX = GRIDCM_int[1];
+    int& NBINDX = GRIDCM_int[2];
+    int& NMFFAC = GRIDCM_int[3];
+    int& MXLXGS = GRIDCM_int[4];
+
+    auto& LMIN   = INTGER.LMIN;
+    auto& NPCOUL = INTGER.NPCOUL;
+    auto& MXCOUL = INTGER.MXCOUL;
+    auto& LOMOST = KANDM.LOMOST;
+    auto& NUMLIS = INELCM.NUMLIS;
+    auto& NASPLI = INELCM.NASPLI;
+    auto& ICL2FF = INELCM.ICL2FF;
+    auto& IDELSR = INELCM.IDELSR;
+    auto& IDELSI = INELCM.IDELSI;
+    auto& ILIS   = INELCM.ILIS;
+    auto& ISMATR = INELCM.ISMATR;
+    auto& ISMATI = INELCM.ISMATI;
+    auto& IINDXS = INELCM.IINDXS;
+
     IRTN = 1;
-    // Access through GRIDCM for NMFFAC
-    // The GRIDCM common has different field names in FFACST context
-    // (IBINDX, MBINDX, NBINDX, NMFFAC, MXLXGS, etc.)
-    // For now use a direct approach with the struct
-    int NMFFAC = GRIDCM.IXLAM; // This maps to NMFFAC in the FFACST-specific view
     if (NMFFAC == 0) return;
 
     double T1 = second();
-    std::printf("1%59c P T O L E M\n", ' ');
-    std::printf("%33c EVALUATION OF COULOMB BORN S-MATRIX ELEMENTS FOR EXTRAPOLATION\n", ' ');
-    std::printf(" ");
-    for (int i = 1; i <= 45; i++) std::printf("%c", HEDCOM.REACT[i]);
-    std::printf("%22c", ' ');
-    for (int i = 1; i <= 65; i++) std::printf("%c", HEDCOM.HEADER[i]);
-    std::printf("\n");
+    std::printf("1%59sP T O L E M\n"
+                "%33sEVALUATION OF COULOMB BORN S-MATRIX ELEMENTS FOR EXTRAPOLATION\n"
+                " %.45s%22s%.65s\n",
+                "", "", &HEDCOM.REACT[1], "", &HEDCOM.HEADER[1]);
 
-    // ... (complex Coulomb integral setup - abbreviated for compilation)
-    // This routine calls NALLOC, INIT4, SETLOG, SETBFC, SETBRN
-    // Full translation would be ~200 lines
+    ICL2FF = NALLOC("FF2INTS ", (NMFFAC + 1) / FACFR4);
+    INIT4(ICL2FF, 0.0f);
+    IDELSR = NALLOC("DELTASR ", NASPLI * NUMLIS);
+    IDELSI = NALLOC("DELTASI ", NASPLI * NUMLIS);
 
-    std::printf(" FFACST: full implementation pending\n");
+    int MAXDL1 = std::max(2, MXLXGS);
+    int LDLDIM = MAXDL1 + 1;
+    int LMXMX = LOMOST;
+    int LMNMN1 = std::max(LMIN - MAXDL1, 0);
+    int IDIM1 = LDLDIM * (2 * (LMXMX - LMNMN1) + 1);
+    int IWRKFF = NALLOC("FFWORK  ", IDIM1);
+    int IDIM2 = std::max(LMXMX + MAXDL1, 4 * MXCOUL) + 1;
+    int IWRKFI = NALLOC("FIWORK  ", 4 * IDIM2);
+    int IWRKWK = NALLOC("COULWORK", std::max({2 * NPCOUL + 4 * MXCOUL,
+                                               2 * (LMXMX + MAXDL1) + 1,
+                                               2 * NPCOUL + LMXMX + MAXDL1}) + 1);
+    int IWRKST = NALLOC("COULSTRT", 16 * LDLDIM);
+
+    SETLOG(2 * (LOMOST + MAXDL1));
+
+    int LBASCP = FACFR4 * (Z[CCBLK.IBASCP] - 1) + 1;
+    int MBASCP = ILLOC(LBASCP + 1);
+    LBASCP = LBASCP + ILLOC(LBASCP + 2);
+
+    int LBASDF = FACFR4 * (Z[CCBLK.IBASDF] - 1) + 1;
+    int MBASDF = ILLOC(LBASDF + 1);
+    LBASDF = LBASDF + ILLOC(LBASDF + 2);
+
+    int LCHNDF = FACFR4 * (Z[CCBLK.ICHNDF] - 1) + 1;
+    int MCHNDF = ILLOC(LCHNDF + 1);
+    LCHNDF = LCHNDF + ILLOC(LCHNDF + 2);
+
+    int LBINDX = FACFR4 * (Z[IBINDX] - 1) + 1;
+    int LCL2FF = FACFR4 * (Z[ICL2FF] - 1) + 1;
+    int LSIG1 = Z[KANDM.ISIGS[1]];
+    int LSIG2 = Z[KANDM.ISIGS[2]];
+
+    // Copy CC S-matrices into delta arrays
+    int LDELSR = Z[IDELSR];
+    int LDELSI = Z[IDELSI];
+    int II = NASPLI * NUMLIS;
+    for (int I = 1; I <= II; I++) {
+        ALLOC(LDELSR + I - 1) = ALLOC(Z[ISMATR] + I - 1);
+        ALLOC(LDELSI + I - 1) = ALLOC(Z[ISMATI] + I - 1);
+    }
+
+    // ALLSW=0 so NUMJS parameter (7th) is unused — pass 0
+    int JMIN = 2 * LMIN;
+    int IRET;
+    double CLTIME;
+    SETBFC_full(NBINDX, MBINDX, &ILLOC(LBINDX),
+        MCHNDF, &ILLOC(LCHNDF), &ALLOC4(LCHNDF), 0, &JMIN,
+        R2S(), LMXMX, &ALLOC(LSIG1), &ALLOC(LSIG2),
+        0.0, 0 /*FALSE*/, 1, NMFFAC, &ALLOC4(LCL2FF),
+        &ALLOC(Z[IWRKFF]), IDIM1, LDLDIM, &ALLOC(Z[IWRKWK]),
+        &ALLOC(Z[IWRKFI]), IDIM2, &ALLOC(Z[IWRKST]), IRET, CLTIME);
+
+    if (IRET != 0) goto L9960;
+
+    // Free work arrays
+    Z[IWRKFF] = -Z[IWRKFF];
+    Z[IWRKFI] = -Z[IWRKFI];
+    Z[IWRKWK] = -Z[IWRKWK];
+    Z[IWRKST] = -Z[IWRKST];
+
+    {
+        double T2 = second();
+
+        SETBRN(NBINDX, MBINDX, &ILLOC(LBINDX),
+            MCHNDF, &ILLOC(LCHNDF), MBASDF, &ILLOC(LBASDF),
+            MBASCP, &ILLOC(LBASCP), &ALLOC4(LBASCP),
+            NUMLIS, &ILLOC((int)(FACFR4 * Z[ILIS] - FACFR4 + 1)), 2 * LMIN,
+            &ALLOC4(LCL2FF), &ILLOC((int)(FACFR4 * Z[IINDXS] - FACFR4 + 1)),
+            &ALLOC(LDELSR), &ALLOC(LDELSI));
+
+        double T3 = second();
+        double TTOT = T3 - T1;
+        T3 = T3 - T2;
+        T2 = T2 - T1;
+        double TRECUR = T2 - CLTIME;
+        std::printf("-TIMES FOR COULOMB BORN S-MATRIX ELEMENTS (SECONDS):\n"
+                    " BELLINGS:%21.3f\n"
+                    " RECURSIONS:%19.3f\n"
+                    " TOTAL COULOMB INTEGRALS:%15.3f\n"
+                    " CLEBSCH FACTORS:%22.3f\n"
+                    " TOTAL TIME:%27.3f\n",
+                    CLTIME, TRECUR, T2, T3, TTOT);
+    }
+    return;
+
+L9960:
+    std::printf(" **** ERROR IN SETBFC\n");
+    IRTN = 0;
     return;
 }
 
@@ -946,7 +1066,7 @@ void WAVPOT(int& IRET)
     // Coulomb phase shifts
     if (WAVCOM.IOFFIT == 1)
         KANDM.ISIGS[ICHANW] = NALLOC(NAMES[ICHANW][6].data, I);
-    DSGMAL(ETA, LOMOST, ALLOC_base(LOCPTRS.Z[KANDM.ISIGS[ICHANW]] + IOFF));
+    DSGMAL(ETA, LOMOST, &ALLOC(LOCPTRS.Z[KANDM.ISIGS[ICHANW]] + IOFF));
 
     if (WAVCOM.IOFFIT != 1) return;
 

@@ -253,8 +253,13 @@ L100:
     if (KANDM.ETAS[1] != 0)
         RUTHFC = KANDM.ETAS[2] * AKI / (KANDM.ETAS[1] * AKO);
 
+    int MCHNDF_xs = 0;
     if (CCSW) {
-        // CC setup (stub for now)
+        int LCHNDF_x = FACFR4 * (Z[CCBLK.ICHNDF] - 1) + 1;
+        NCHNDF = ILLOC(LCHNDF_x);
+        MCHNDF_xs = ILLOC(LCHNDF_x + 1);
+        FKEPSW = (ISAVB == 1);
+        if (FKEPSW) IF_var = NALLOC("F       ", 2 * NUMANG * INELCM.NASPLI);
         goto L200;
     }
 
@@ -265,10 +270,46 @@ L200:
     IDNPAR = 0;
     if (IDENSW) IDNPAR = 1;
 
+    // Local variables for CC
+    char SIGNS_arr[3] = {0, '+', '-'};
+
     // Main channel loop
     for (int NCHN = 2; NCHN <= NCHNDF; NCHN++) {
         if (CCSW) {
-            // CC channel setup (stub)
+            int LCHNDF_x = FACFR4 * (Z[CCBLK.ICHNDF] - 1) + 1;
+            LCHNDF_x = LCHNDF_x + ILLOC(LCHNDF_x + 2) + MCHNDF_xs * (NCHN - 1);
+            MCHN = ILLOC(LCHNDF_x);
+            int JT_v = ILLOC(LCHNDF_x + 1);
+            int IT_v = 1;
+            if (JT_v < 0) IT_v = 2;
+            JT_v = std::abs(JT_v);
+            double ET_v = (double)ALLOC4(LCHNDF_x + 2);
+            int JP_v = ILLOC(LCHNDF_x + 3);
+            int IP_v = 1;
+            if (JP_v < 0) IP_v = 2;
+            JP_v = std::abs(JP_v);
+            double EP_v = (double)ALLOC4(LCHNDF_x + 4);
+            Q = -(EP_v + ET_v);
+            int KT_v = ILLOC(LCHNDF_x + 15);
+            int KP_v = ILLOC(LCHNDF_x + 16);
+            if (IDENSW) IDNPAR = 1;
+            if (IDENSW && JT_v == JP_v && ET_v == EP_v) IDNPAR = 2;
+            std::printf("0REACTION CROSS SECTIONS ARE FOR CHANNEL%7d"
+                        ":  PROJECTILE, E =%7.3f  J =%3d/2%c  K =%2d/2"
+                        ";  TARGET, E =%7.3f  J =%3d/2%c  K =%2d/2\n",
+                        MCHN, EP_v, JP_v, SIGNS_arr[IP_v], KP_v,
+                        ET_v, JT_v, SIGNS_arr[IT_v], KT_v);
+            LINECT += 2;
+            KANDM.ETAS[2] = (double)ALLOC4(LCHNDF_x + 5);
+            RUTHFC = ECM / (ECM - ET_v - EP_v);
+            NSPLI = ILLOC(LCHNDF_x + 10);
+            LTOCOF = ILLOC(LCHNDF_x + 12);
+            LSOFF = ILLOC(LCHNDF_x + 13);
+            LIMOST = ILLOC(LCHNDF_x + 14);
+            if (PBUGSW)
+                std::printf(" ETA2, NSPLI, LTOCOF, LSOFF, LIMOST:%8d%8d%8d%8d%8d\n",
+                            (int)KANDM.ETAS[2], NSPLI, LTOCOF, LSOFF, LIMOST);
+            IRDINT = NALLOC("BETAS   ", (2 * NSPLI * (LIMOST - LMIN + 1)) / FACFR4);
         }
 
         // Scan TOCS for extrema
@@ -309,13 +350,7 @@ L200:
         if (CCSW) DSGMAL(KANDM.ETAS[2], LIMOST + LXMAX,
                          &ALLOC(Z[KANDM.ISIGS[2]]));
 
-        {
-            int ntot_sp = NSPLI * (LIMOST + 1);
-            for (int qq = 0; qq < ntot_sp; qq++) {
-                if (std::isnan((double)ALLOC4(LMAG + qq))) ALLOC4(LMAG + qq) = 0.0f;
-                if (std::isnan((double)ALLOC4(LPHASE + qq))) ALLOC4(LPHASE + qq) = 0.0f;
-            }
-        }
+        // (NaN safety check removed: wrong bounds for LMIN > 0 case)
         double DUMMY_d = 0;
         double DUMMY8[6] = {};  // ALOWFC(2,2)=4 elems, FCOUL(2,3)=6 elems
         BETCAL(0 /*false*/, AKI, WAVCOM.JSPS[1], NSPLI, LMIN, LIMOST,

@@ -77,7 +77,23 @@ double AITLAG(double X, double STPINV, double* TABLE, int NTABLE, int NAIT)
 }
 
 void AKFCR(int L1, int J1, int L2, int J2, int LXX2, int J, double& AKREST)
-{ AKREST = 0.0; /* translate from source.f L143-165 */ }
+{
+    // Construction of kinematical factors W(1,2)
+    // See the notes, Eqn 21
+    // source.f L143-165
+    const double& RT4PI = CNSTNT.RT4PI;
+
+    if (L1 < 0 || L2 < 0) {
+        AKREST = 0.0;
+        return;
+    }
+    double RME = CLEBSH(L1, LXX2, 0, 0, L2, 0)
+               * SIXJ(J1, L1, J, L2, J2, LXX2)
+               * std::pow(-1.0, (J1 + L1 + J) / 2)
+               / RT4PI
+               * std::sqrt((LXX2 + 1.0) * (L1 + 1.0));
+    AKREST = RME;
+}
 
 void ALSORT(char8* A, int* IX, int N)
 {
@@ -162,12 +178,117 @@ void CUBMAP(int MAPTYP, double XLO, double XMID_in, double XHI, double GAMMA,
 }
 
 void CUPAB(int IORDER, int IPT, int* LXX2S, int LXX2,
-           int JIN, int JOUT, int JBIG, int LX, double& COUP)
-{ COUP = 0.0; /* translate from source.f L13083-13177 */ }
+           double* RMENUC, double* RMECOU, double* RNUC, int* IZPT,
+           double& RMEGN, double& RMEGC, int& IPT1)
+{
+    // Computes the <JA, JBIGA|| G(LX) ||JB, JBIGB>
+    // See notes equations 47, 70, 46, 71
+    // source.f L13083-13177
+    const double& PI = CNSTNT.PI;
+    double* TABLE = FACTRL.FACTBL;  // 1-based: TABLE(I+2) = sqrt((I+1)!)
 
-void CUPSPN(int& IRTN, int LXX2, int IPT, double* SCHN,
-            int JIN, int JOUT, int JBIGIN, int JBIGOUT, double& COUP)
-{ IRTN = 0; COUP = 0.0; /* translate from source.f L13179-13292 */ }
+    // Statement function F (local)
+    auto F = [&](int L1, int L2, int L_arg) -> double {
+        return std::sqrt((L1 + 1.0) * (L2 + 1.0) / (16.0 * PI * (L_arg + 1.0)))
+             * CLEBSH(L1, L2, 0, 0, L_arg, 0);
+    };
+
+    int LX = LXX2 / 2;
+    double XN = 1.0;
+    double XC = 1.0;
+
+    // Check for order of coupling
+    IPT1 = IPT;
+    if (IORDER == 2) goto L300;
+
+    // First and second order at the same vertex
+L200:
+    {
+        double SGNFAC = +1.0;
+        if (IPT == 1) SGNFAC = std::pow(-1.0, LX);
+        RMEGN = SGNFAC * RNUC[IPT] * XN * RMENUC[IORDER];
+        RMEGC = SGNFAC * 4.0 * PI / ((LXX2 + 1) * 3.0 * IZPT[IPT])
+              * XC * RMECOU[IORDER];
+        return;
+    }
+
+    // Second-order excitation
+L300:
+    IPT1 = IPT + 2;
+    if (IPT > 2) goto L500;
+
+    // Non-mutual second-order excitation (projectile or target)
+    // A few extra factors on top of first order for nuclear
+    // Also double if LX1 != LX2
+    if (LXX2S[1] != LXX2S[2]) XC = 2.0;
+    XN = XC * RNUC[IPT] * F(LXX2S[1], LXX2S[2], LXX2);
+    goto L200;
+
+    // Second order mutual excitation of target and projectile
+L500:
+    IPT1 = 5;
+    {
+        double SGNFAC = std::pow(-1.0, LXX2S[1] / 2);
+        RMEGN = SGNFAC * 2.0 * F(LXX2S[1], LXX2S[2], LXX2)
+              * RNUC[1] * RNUC[2] * RMENUC[1] * RMENUC[2];
+
+        RMEGC = 0.0;
+        if (LXX2 != LXX2S[1] + LXX2S[2]) return;
+        RMEGC = SGNFAC * 4.0 * PI * CNSTNT.RT4PI
+              * TABLE[LXX2 + 2] / (TABLE[LXX2S[1] + 2] * TABLE[LXX2S[2] + 2])
+              / (3.0 * (LXX2 + 1) * IZPT[1] * IZPT[2])
+              * RMECOU[1] * RMECOU[2];
+    }
+}
+
+void CUPSPN(int& IRTN, int LXX2, int IPT, int* SCHN,
+            int* LXX2S, int* JNUC, double RMEGN, double RMEGC,
+            double& XN, double& XC)
+{
+    // Calculates channel-spin coupling matrix elements
+    // source.f L13179-13292
+    // SCHN(2) is INTEGER array (1-based)
+    // JNUC(2,2) is INTEGER array in column-major: JNUC(IPT,I)
+    //   Fortran JNUC(2,2) stored column-major as flat[0..3]:
+    //   JNUC(1,1)=flat[0], JNUC(2,1)=flat[1], JNUC(1,2)=flat[2], JNUC(2,2)=flat[3]
+    //   Access: JNUC(i,j) = flat[(j-1)*2 + (i-1)]
+    #define JNUC_F(i,j) JNUC[((j)-1)*2 + ((i)-1)]
+
+    double RME;
+
+    // Check for mutual excitation
+    if (IPT == 3) goto L500;
+
+    // First and second order at the same vertex
+    // L200:
+    {
+        RME = std::sqrt((SCHN[1] + 1.0) * (SCHN[2] + 1))
+            * SIXJ(SCHN[1], SCHN[2], LXX2,
+                   JNUC_F(IPT, 2), JNUC_F(IPT, 1), JNUC_F(3 - IPT, 1))
+            * std::pow(-1.0, (LXX2 + JNUC_F(1, IPT) + JNUC_F(2, IPT) + SCHN[3 - IPT]) / 2);
+    }
+
+    goto L300;
+
+L500:
+    // Second order mutual excitation of target and projectile
+    {
+        // int MUL = LXX2S[1] + LXX2S[2]; // unused
+        // IPT1 = 5; // unused locally
+
+        RME = std::sqrt((SCHN[1] + 1) * (SCHN[2] + 1.0) * (LXX2 + 1.0))
+            * WIG9J(SCHN[1],    SCHN[2],    LXX2,
+                    JNUC_F(1,1), JNUC_F(1,2), LXX2S[1],
+                    JNUC_F(2,1), JNUC_F(2,2), LXX2S[2]);
+    }
+
+L300:
+    XN = RME * RMEGN;
+    XC = RME * RMEGC;
+    IRTN = 1;
+
+    #undef JNUC_F
+}
 
 void DUMMY1() { }
 void DUMMY2() { }
@@ -495,17 +616,72 @@ L850:
 
 void IXSORT(int* IX, double* X, int N)
 {
-    // Simple insertion sort on X, permuting IX
-    for (int I = 2; I <= N; I++) {
-        double KEY = X[IX[I]];
-        int JVAL = IX[I];
-        int J = I - 1;
-        while (J >= 1 && X[IX[J]] > KEY) {
-            IX[J + 1] = IX[J];
-            J--;
-        }
-        IX[J + 1] = JVAL;
-    }
+    // Quicksort on X, permuting IX — 1-based arrays
+    // source.f L22957-23063
+    int LV[17], UV[17]; // 1-based pushdown stack (max depth 16)
+    int P, LP, UP, IY;
+    double Y;
+
+    // Initialize IX
+    for (int I = 1; I <= N; I++)
+        IX[I] = I;
+
+    // Initialize the pushdown list
+    LV[1] = 1;
+    UV[1] = N;
+    P = 1;
+
+    // Partition next segment
+L10:
+    if (P < 1) return;
+L20:
+    if ((UV[P] - LV[P]) >= 1) goto L30;
+    P = P - 1;
+    goto L10;
+
+    // Choose bound
+L30:
+    LP = LV[P] - 1;
+    UP = UV[P];
+    Y  = X[UP];
+    IY = IX[UP];
+
+    // Move lower pointer
+L40:
+    if ((UP - LP) < 2) goto L70;
+    LP = LP + 1;
+    if (X[LP] <= Y) goto L40;
+    X[UP]  = X[LP];
+    IX[UP] = IX[LP];
+
+    // Move upper pointer
+L50:
+    if ((UP - LP) < 2) goto L60;
+    UP = UP - 1;
+    if (X[UP] >= Y) goto L50;
+    X[LP]  = X[UP];
+    IX[LP] = IX[UP];
+    goto L40;
+
+    // Finish up
+L60:
+    UP = UP - 1;
+L70:
+    X[UP]  = Y;
+    IX[UP] = IY;
+    if ((UP - LV[P]) >= (UV[P] - UP)) goto L80;
+    LV[P+1] = LV[P];
+    UV[P+1] = UP - 1;
+    LV[P]   = UP + 1;
+    goto L90;
+
+L80:
+    LV[P+1] = UP + 1;
+    UV[P+1] = UV[P];
+    UV[P]   = UP - 1;
+L90:
+    P = P + 1;
+    goto L20;
 }
 
 void LINLSQ(int IFUNC, int N, double* XVALS, double* SVALS, double& CVAL,
@@ -550,19 +726,616 @@ void MEBDEF(int IORD, int I12, int IBN, double* XNS, int IBC, double* XCS,
             int MEORD, int LXX2, int* LXX2S, int IZ,
             double RNUC, double RC, double DELTAE, int J2, int J1, int K2, int K1,
             double& RMENUC, double& RMECOU, int& IRTN, int IPT)
-{ RMENUC = 0.0; RMECOU = 0.0; IRTN = 0; /* translate from source.f L26066-26335 */ }
+{
+    // Deformed rotational reduced matrix element to and from beta
+    // source.f L26066-26335
+    const double& PI = CNSTNT.PI;
+    auto& Z = LOCPTRS.Z;
+    int NOTDEF = *reinterpret_cast<int*>(&INTRNL.NOTDEF);  // Fortran integer overlay
+
+    static const char* BETNAM[3] = { "", "BETAP", "BETAT" }; // 1-based
+
+    double CLEBS[21];  // 1-based: CLEBS[1]..CLEBS[20]
+    double XC, XN, AME1, AME2, AME2X, AMEUSE, BETDEF;
+    double X2, X3, A, BETA;
+
+    IRTN = 0;
+
+    // Cannot proceed if IORD != 1
+    if (IORD != 1) goto L900;
+
+    {
+        int LX = LXX2 / 2;
+        double TJ1P1 = J1 + 1;
+
+        // Coefficients for RME to beta (rotational model)
+        // AME1 converts < ||ALPHA(COULOMB)|| > to < ||E(LX)|| > in sharp cutoff model
+        AME1 = 3.0 * IZ * std::pow(RC / 10.0, LX) / (4.0 * PI);
+
+        // AME2 converts beta(effective) to < ||ALPHA(COULOMB)|| >
+        AME2 = CLEBSH(J1, LXX2, K1, K2 - K1, J2, K2) * std::sqrt(TJ1P1);
+        if (K1 == K2) goto L50;
+        if (K2 != 0 && K1 != 0) goto L920;
+        AME2 = std::sqrt(2.0) * AME2;
+L50:
+        if (AME2 == 0.0) goto L900;
+        AMEUSE = AME1 * AME2;
+        AME2X = AME2;
+
+        if (IBC == -99) goto L190;
+
+        // Get the power series coefficients that relate beta to beta(effective)
+        // for the long-range part of the Coulomb interaction
+        // BETA(EFFECTIVE) = BETA + X2*BETA**2 + X3*BETA**3
+        X3 = 0.0;
+
+        // In the following loop L = 1/2 LAMBDA
+        for (int L = 0; L <= LX; L++) {
+            CLEBS[L + 1] = CLEBSH(LXX2, LXX2, 0, 0, 4 * L, 0);
+            X3 = X3 + std::pow(CLEBS[L + 1], 4) / (4 * L + 1);
+        }
+
+        X2 = 0.0;
+        if ((LX & 1) == 0)  // .NOT. btest(LX, 0) => LX is even
+            X2 = 0.50 * (LX + 2) * std::sqrt((LXX2 + 1) / (4.0 * PI))
+               * std::pow(CLEBS[LX / 2 + 1], 2);
+        X3 = (LX + 2) * (LX + 1) * (LXX2 + 1.0) * (LXX2 + 1.0) / (24.0 * PI) * X3;
+
+        XC = XCS[I12];
+
+        // Now get the beta Coulomb if necessary
+        switch (IBC) {
+        case 1: goto L200;
+        case 2: goto L110;
+        case 3: goto L150;
+        case 4: goto L130;
+        default: goto L930;
+        }
+
+        // <|| ALPHA ||>  get beta effective
+L110:
+        XC = XC / AME2;
+        goto L160;
+
+        // <LX,0||R.M.E.||0>
+L130:
+        AME2X = 1.0;
+
+        // <J2,K2||R.M.E.||J1,K1>  get beta effective
+L150:
+        XC = XC / (AME1 * AME2X);
+
+        // Now get beta from beta(effective) by three iterations of Newton-Raphson
+        // XC has the desired beta(effective)
+L160:
+        BETA = XC;
+        for (int I = 1; I <= 3; I++) {
+            A = 1.0 + BETA * (2.0 * X2 + 3.0 * X3 * BETA);
+            BETA = BETA + (XC - BETA * (1.0 + BETA * (X2 + BETA * X3))) / A;
+        }
+        XC = BETA;
+        goto L200;
+
+        // Nothing about Coulomb defined; use zero
+L190:
+        XC = 0.0;
+        XCS[I12] = 0.0;
+        RMECOU = 0.0;
+        goto L210;
+
+        // BETA is in XC; get everything from it
+        // First the R.M.E.
+L200:
+        XCS[I12] = XC;
+        RMECOU = AMEUSE * XC * (1.0 + XC * (X2 + XC * X3));
+
+        // Advance to nuclear first order
+L210:
+        XN = XNS[I12];
+        BETDEF = 0.0;
+        if (IBN != -99 && XN == 0.0) goto L300;
+
+        // Locate the definitions
+        {
+            int L1 = INTGER.IPARM4;
+            if (L1 == NOTDEF) L1 = 2;
+            int IBETA = NAMLOC(BETNAM[IPT]);
+            if (IBETA == 0) goto L910;
+            int L2 = LX - L1 + 1;
+            if (L2 <= LENGTH.LENG[IBETA] && L2 >= 1)
+                BETDEF = ALLOC(Z[IBETA] - 1 + L2);
+        }
+
+        if (IBN == -99) goto L260;
+        switch (IBN) {
+        case 1: goto L300;
+        case 2: goto L250;
+        default: goto L930;
+        }
+
+        // <||ALPHA||>
+L250:
+        XN = XN / AME2;
+        goto L300;
+
+        // Get nuclear from Coulomb if possible
+L260:
+        if (IBC == -99) goto L270;
+        XN = RC / RNUC * XC;
+        goto L300;
+
+        // Nuclear beta is not defined; use deformed value if possible
+L270:
+        XNS[I12] = BETDEF;
+        RMENUC = 1.0;
+        goto L310;
+
+        // XN is now BETAN or 0 if it could not be found
+L300:
+        XNS[I12] = XN;
+        RMENUC = 1.0;
+        if (BETDEF != 0.0) RMENUC = XN / BETDEF;
+        if (XN == 0.0) RMENUC = 0.0;
+L310:
+        RMENUC = AME2 * RMENUC;
+        return;
+    }
+
+L900:
+    RMECOU = 0.0;
+    RMENUC = 0.0;
+    return;
+
+L910:
+    std::printf("\n*** \"%s\" MUST BE DEFINED FOR DEFORMED MODEL\n", BETNAM[IPT]);
+    goto L925;
+
+L920:
+    std::printf("\n*** PRESENT ROTATIONAL MODEL DOES NOT WORK FOR K1, K2 = %4d/2%4d/2\n", K1, K2);
+L925:
+    IRTN = 1;
+    goto L900;
+
+L930:
+    std::printf("\n*** INVALID IBC OR IBN IN MEBDEF*%12d%12d\n", IBC, IBN);
+    goto L925;
+}
 
 void MEBROT(int IORD, int I12, int IBN, double* XNS, int IBC, double* XCS,
             int MEORD, int LXX2, int* LXX2S, int IZ,
             double RNUC, double RC, double DELTAE, int J2, int J1, int K2, int K1,
             double& RMENUC, double& RMECOU, int& IRTN)
-{ RMENUC = 0.0; RMECOU = 0.0; IRTN = 0; /* translate from source.f L26337-26567 */ }
+{
+    // Converts rotational reduced matrix element to and from beta
+    // source.f L26337-26567
+    const double& PI = CNSTNT.PI;
+    double XC, XN, AME1, AME2, AME2X, AME3, AME4, AMEUSE, SGNFAC;
+
+    IRTN = 0;
+
+    // Cannot proceed if both deformations are not defined
+    if (IBN == -99 && IBC == -99) goto L900;
+
+    {
+        int LX = LXX2 / 2;
+        double TJ1P1 = J1 + 1;
+
+        // Coefficients for RME to beta (rotational model)
+        // AME1 converts < ||ALPHA|| > to < ||E(LX)|| > in sharp cutoff model
+        AME1 = 3.0 * IZ * std::pow(RC / 10.0, LX) / (4.0 * PI);
+
+        // AME2 converts beta or beta1*beta2 to < ||ALPHA|| >
+        AME2 = CLEBSH(J1, LXX2, K1, K2 - K1, J2, K2) * std::sqrt(TJ1P1);
+        if (K1 == K2) goto L50;
+        if (K2 != 0 && K1 != 0) goto L920;
+        AME2 = std::sqrt(2.0) * AME2;
+L50:
+        if (AME2 == 0.0) goto L900;
+        AMEUSE = AME1 * AME2;
+        AME2X = AME2;
+
+        if (IORD == 2) goto L500;
+
+        // AME3 is second-order contribution to R.M.E.
+        AME3 = 0.0;
+        if (MEORD == 1 && IORD == 1)
+            AME3 = 0.25 * (LX + 2) * std::sqrt((LXX2 + 1) / PI)
+                 * std::pow(CLEBSH(LXX2, LXX2, 0, 0, LXX2, 0), 2);
+
+        // First order
+        XC = XCS[I12];
+
+        // Now get the beta Coulomb if necessary
+        switch (IBC) {
+        case 1: goto L200;
+        case 2: goto L110;
+        case 3: goto L150;
+        case 4: goto L130;
+        default: goto L930;
+        }
+
+        // <|| ALPHA ||>
+L110:
+        XC = XC / AME2;
+        goto L200;
+
+        // <LX,0||R.M.E.||0>
+L130:
+        AME2X = 1.0;
+        // fall through
+
+        // <J2,K2||R.M.E.||J1,K1>
+        // We are solving M.E. = A1*A2*BETA*(1 + A3*BETA)
+L150:
+        XC = XC / (AME1 * AME2X);
+        if (AME3 != 0.0)
+            XC = (std::sqrt(1.0 + 4.0 * AME3 * XC) - 1.0) / (2.0 * AME3);
+
+        // BETA is in XC; get everything from it.
+        // First the R.M.E. (model dependent)
+L200:
+        XCS[I12] = XC;
+        RMECOU = AMEUSE * XC;
+
+        // Advance to nuclear first order
+        XN = XNS[I12];
+        if (IBN == -99) goto L260;
+        switch (IBN) {
+        case 1: goto L300;
+        case 2: goto L250;
+        default: goto L930;
+        }
+
+        // <||ALPHA||>
+L250:
+        XN = XN / AME2;
+        goto L300;
+
+        // Get nuclear from Coulomb
+L260:
+        XN = RC / RNUC * XC;
+
+        // XN is now BETAN
+L300:
+        XNS[I12] = XN;
+        RMENUC = AME2 * XN;
+        return;
+
+        // Second order
+        // First Coulomb
+L500:
+        XC = XCS[2];
+
+        // AME4 converts < ALPHA ALPHA > to < E(LX) >
+        AME4 = AME1 * (LX + 2) * std::sqrt((LXX2S[1] + 1.0) * (LXX2S[2] + 1.0)
+             / (16.0 * PI * (LXX2 + 1.0)))
+             * CLEBSH(LXX2S[1], LXX2S[2], 0, 0, LXX2, 0);
+        AME2 = AME2
+             * CLEBSH(LXX2S[1], LXX2S[2], K2 - K1, 0, LXX2, K2 - K1);
+
+        switch (IBC) {
+        case 1: goto L520;
+        case 2: goto L600;
+        case 3: goto L540;
+        default: goto L930;
+        }
+
+        // BETAC1 and BETAC2, get ALPHA X ALPHA
+L520:
+        XC = AME2 * XCS[1] * XCS[2];
+        goto L600;
+
+        // RME E(LX), get ALPHA X ALPHA
+L540:
+        XC = XC / AME4;
+
+        // Now we have ALPHA X ALPHA, get RME E(LX)
+L600:
+        RMECOU = AME4 * XC;
+
+        // Go on to nuclear
+        if (IBN == -99) goto L760;
+        switch (IBN) {
+        case 1: goto L720;
+        case 2: goto L740;
+        default: goto L930;
+        }
+
+        // BETAN1, BETAN2
+L720:
+        RMENUC = AME2 * XNS[1] * XNS[2];
+        goto L800;
+
+        // ALPHA X ALPHA given
+L740:
+        RMENUC = XNS[2];
+        goto L800;
+
+        // Unknown, use Coulomb
+L760:
+        RMENUC = std::pow(RC / RNUC, 2) * XC;
+
+L800:
+        return;
+    }
+
+L900:
+    RMECOU = 0.0;
+    RMENUC = 0.0;
+    return;
+
+L920:
+    std::printf("\n*** PRESENT ROTATIONAL MODEL DOES NOT WORK FOR K1, K2 = %4d/2%4d/2\n", K1, K2);
+L925:
+    IRTN = 1;
+    goto L900;
+
+L930:
+    std::printf("\n*** INVALID IBC OR IBN IN MEBROT*%12d%12d\n", IBC, IBN);
+    goto L925;
+}
 
 void MEBVIB(int IORD, int I12, int IBN, double* XNS, int IBC, double* XCS,
             int MEORD, int LXX2, int* LXX2S, int IZ,
-            double RNUC, double RC, double DELTAE, int J2, int J1, int K2, int K1,
+            double RNUC, double RC, double DELTAE, int J2, int J1, int K2IN, int K1IN,
             double& RMENUC, double& RMECOU, int& IRTN)
-{ RMENUC = 0.0; RMECOU = 0.0; IRTN = 0; /* translate from source.f L26569-26889 */ }
+{
+    // Converts vibrational reduced matrix element to and from beta
+    // source.f L26569-26889
+    const double& PI = CNSTNT.PI;
+    double XC, XN, AME1, AME2, AME4, SGNFAC;
+
+    IRTN = 0;
+
+    // Cannot proceed if both deformations are not defined
+    if (IBN == -99 && IBC == -99) goto L900;
+
+    {
+        int LX = LXX2 / 2;
+
+        // Arrange things so that K2 > K1
+        // Fill in undefined numbers of phonons
+        int K1 = K1IN;
+        int K2 = K2IN;
+        if (K1 == 0 && J1 > 0) K1 = 2;
+        if (K2 == 0 && J2 > 0) K2 = 2;
+        if (K1 >= 0) goto L20;
+        if (K2 < 0) goto L940;
+        K1 = 2 * IORD;
+        if (K2 == 2) K1 = 6 - K1;
+        goto L40;
+L20:
+        if (K2 >= 0) goto L40;
+        K2 = 2 * IORD;
+        if (K1 == 2) K2 = 6 - K2;
+
+L40:
+        int KK1, KK2, JJ1, JJ2;
+        if (K2 < K1) goto L45;
+        KK1 = K1 / 2;
+        KK2 = K2 / 2;
+        JJ1 = J1;
+        JJ2 = J2;
+        SGNFAC = +1.0;
+        goto L50;
+L45:
+        KK1 = K2 / 2;
+        KK2 = K1 / 2;
+        JJ1 = J2;
+        JJ2 = J1;
+        SGNFAC = std::pow(-1.0, (J2 - J1) / 2);
+
+L50:
+        {
+            double TJ2P1 = JJ2 + 1;
+
+            // Coefficients for RME to beta (vibrational model)
+            // AME1 converts < ||ALPHA|| > to < ||E(LX)|| > in sharp cutoff model
+            AME1 = 3.0 * IZ * std::pow(RC / 10.0, LX) / (4.0 * PI);
+
+            // AME2 converts beta or beta1*beta2 to < ||ALPHA|| >
+            // If this is a case we don't know about, AME2 = 0
+            AME2 = 0.0;
+
+            if (IORD == 2) goto L400;
+
+            // First order
+            if (KK2 >= 3) goto L100;
+            if (KK2 != KK1 + 1) goto L100;
+            if (KK1 == 0 && JJ1 != 0) goto L100;
+            switch (KK2) {
+            case 1: goto L70;
+            case 2: goto L80;
+            default: goto L100;
+            }
+
+            // < 1 phonon || LX || 0 >   LX = J2 is already known
+L70:
+            AME2 = 1.0;
+            goto L100;
+
+            // < 2 phonons; J || LX || 1 phonon >
+L80:
+            AME2 = std::sqrt(TJ2P1 / (LXX2 + 1));
+            if (LXX2 != JJ1) goto L100;
+            if (JJ2 % 4 != 0) goto L99;
+            AME2 = std::sqrt(2.0) * AME2;
+            goto L100;
+
+L99:
+            AME2 = 0.0;
+L100:
+            AME2 = SGNFAC * AME2;
+            XC = XCS[I12];
+
+            // Now get the beta Coulomb if necessary and possible
+            switch (IBC) {
+            case 1: goto L170;
+            case 2: goto L110;
+            case 3: goto L150;
+            case 4: goto L130;
+            default: goto L930;
+            }
+
+            // <|| ALPHA ||>  convert to < ||E(LX)|| >
+L110:
+            XC = XC * AME1;
+            goto L150;
+
+            // <LX||R.M.E.||0>   get beta
+L130:
+            XC = XC / AME1;
+            goto L170;
+
+            // <J2,K2||R.M.E.||J1,K1>  get beta if possible
+L150:
+            RMECOU = XC;
+            XC = 0.0;
+            if (AME2 != 0.0) XC = RMECOU / (AME1 * AME2);
+            goto L200;
+
+            // BETA is in XC; get everything from it
+L170:
+            if (AME2 == 0.0) goto L920;
+            RMECOU = AME1 * AME2 * XC;
+
+L200:
+            XCS[I12] = XC;
+
+            // Advance to nuclear first order
+            XN = XNS[I12];
+            if (IBN == -99) goto L260;
+            switch (IBN) {
+            case 1: goto L270;
+            case 2: goto L250;
+            default: goto L930;
+            }
+
+            // <||ALPHA||>
+L250:
+            RMENUC = XN;
+            XN = 0.0;
+            if (AME2 != 0.0) XN = RMENUC / AME2;
+            goto L300;
+
+            // Get nuclear alpha from Coulomb RME
+L260:
+            XN = RC / RNUC * RMECOU / AME1;
+            goto L250;
+
+            // XN is now BETAN
+L270:
+            if (AME2 == 0.0) goto L920;
+            RMENUC = AME2 * XN;
+
+L300:
+            XNS[I12] = XN;
+            return;
+
+            // Second order
+            // Get conversion factors
+L400:
+            if (KK2 >= 3) goto L500;
+            if (KK1 == 0 && KK2 == 2) goto L410;
+            if (KK1 == 1 && KK2 == 1) goto L420;
+            goto L500;
+
+            // < 2 phonon || (LX1 LX2)LX || 0 >   LX = J2 is known
+L410:
+            AME2 = std::sqrt(TJ2P1 / ((LXX2S[1] + 1.0) * (LXX2S[2] + 1.0)));
+            if (LXX2S[1] == LXX2S[2]) AME2 = std::sqrt(2.0) * AME2;
+            goto L500;
+
+            // < 1 phonon || (LX1 LX2)LX || 1 phonon >
+L420:
+            if (LXX2S[1] == JJ1 && LXX2S[2] == JJ2) goto L425;
+            if (LXX2S[1] == JJ2 && LXX2S[2] == JJ1) goto L425;
+            goto L500;
+
+L425:
+            AME2 = std::pow(-1.0, LXX2S[1] / 2) * std::sqrt((LXX2 + 1.0)
+                 / ((LXX2S[1] + 1.0) * (LXX2S[2] + 1.0)));
+            if (JJ2 == JJ1) AME2 = 2.0 * AME2;
+
+L500:
+            AME2 = SGNFAC * AME2;
+            AME4 = AME1 * (LX + 2) * std::sqrt((LXX2S[1] + 1.0) * (LXX2S[2] + 1.0)
+                 / (16.0 * PI * (LXX2 + 1.0)))
+                 * CLEBSH(LXX2S[1], LXX2S[2], 0, 0, LXX2, 0);
+
+            // Now do Coulomb
+            XC = XCS[2];
+            switch (IBC) {
+            case 1: goto L520;
+            case 2: goto L600;
+            case 3: goto L540;
+            default: goto L930;
+            }
+
+            // BETAC1 and BETAC2, get ALPHA X ALPHA
+L520:
+            if (AME2 == 0.0) goto L920;
+            XC = AME2 * XCS[1] * XCS[2];
+            goto L600;
+
+            // RME E(LX), get ALPHA X ALPHA
+L540:
+            XC = XC / AME4;
+
+            // Now we have ALPHA X ALPHA, get RME E(LX)
+L600:
+            RMECOU = AME4 * XC;
+
+            // Go on to nuclear
+            if (IBN == -99) goto L760;
+            switch (IBN) {
+            case 1: goto L720;
+            case 2: goto L740;
+            default: goto L930;
+            }
+
+            // BETAN1, BETAN2
+L720:
+            if (AME2 == 0.0) goto L920;
+            RMENUC = AME2 * XNS[1] * XNS[2];
+            goto L800;
+
+            // ALPHA X ALPHA given
+L740:
+            RMENUC = XNS[2];
+            goto L800;
+
+            // Unknown, use Coulomb
+L760:
+            RMENUC = std::pow(RC / RNUC, 2) * XC;
+
+L800:
+            return;
+        }
+    }
+
+L900:
+    RMECOU = 0.0;
+    RMENUC = 0.0;
+    return;
+
+L920:
+    std::printf("\n*** PRESENT VIBRATIONAL MODEL DOES NOT WORK"
+                " FOR J2, K2, LX1, LX2, LX, J1, K1, ORDER =\n"
+                "      %4d/2%4d/2%4d/2%4d/2%4d/2%4d/2%4d/2%4d\n",
+                J2, K2IN, LXX2S[1], LXX2S[2], LXX2, J1, K1IN, IORD);
+L925:
+    IRTN = 1;
+    goto L900;
+
+L930:
+    std::printf("\n*** INVALID IBC OR IBN IN MEBVIB*%12d%12d\n", IBC, IBN);
+    goto L925;
+
+L940:
+    std::printf("\n**** CANNOT HAVE INDEFINITE NUMBER OF PHONONS IN BOTH STATES.\n");
+    goto L925;
+}
 
 // MUELCO → anapow_translated.cpp
 
@@ -600,14 +1373,37 @@ void SETINT(int N)
     INTWRK.MAXINT = N;
 }
 
-void SETLOG(int N)
+void SETLOG(int MAXI)
 {
-    // Set up log factorial table
-    if (N <= LOGFAC.MAXLF) return;
-    int ISTART = LOGFAC.MAXLF + 1;
-    LOGFAC.MAXLF = N;
-    for (int I = ISTART; I <= N; I++) {
-        LOGFAC.LF[I + 1] = LOGFAC.LF[I] + std::log((double)I);
+    static char LOGNAM[9] = "LOGFACS ";
+    int ILOGFC = NAMLOC(LOGNAM);
+    extern void DUMMY1();
+    DUMMY1();
+    if (MAXI <= LOGFAC.MAXLF) {
+        if (ILOGFC == 0) return;
+        goto L300;
+    }
+
+    {
+        LOGFAC.MAXLF = MAXI + 10;
+        ILOGFC = NALLOC(LOGNAM, LOGFAC.MAXLF + 1);
+        int LLOGFC = LOCPTRS.Z[ILOGFC];
+        ALLOC(LLOGFC) = 0;
+        double X = 0;
+        double DI = 1;
+        for (int I = 1; I <= LOGFAC.MAXLF; I++) {
+            X = X + std::log(DI);
+            DI = DI + 1;
+            ALLOC(LLOGFC + I) = X;
+        }
+    }
+
+L300:
+    {
+        int LLOGFC = LOCPTRS.Z[ILOGFC];
+        double* alloc_base = &ALLOC(1);
+        double* lf_base = &LOGFAC.LF[0];
+        LOGFAC.LFBIAS = (int)(alloc_base - lf_base) + LLOGFC - 2;
     }
 }
 
@@ -651,9 +1447,6 @@ void VCSQ12(double RVAL, double& X, int K)
               + R*(VCSQ12_E[K] + R*R*VCSQ12_F[K]))));
         X = X / R;
     }
-    if (K <= 2 && !std::isfinite(X))
-        std::fprintf(stderr, "VCSQ12_NAN K=%d RVAL=%.5e R1=%.5e R2=%.5e VC0=%.5e X=%.5e\n",
-            K, RVAL, R1, R2, VCSQ12_VC0[K], X);
 }
 
 void SETVSQ(double RR1, double RR2, int IZ1, int IZ2, int K)

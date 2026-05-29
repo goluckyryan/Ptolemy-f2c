@@ -48,7 +48,7 @@ extern void GENBNX_full(
     int MBASDF, int* BASDEF,
     int MCHNDF, float* CHNDEF,
     int& NMBFAC, int& NMFFAC, int& MXLXGS, int& MXLXBF,
-    int COULSW, int PBUGSW);
+    int& COULSW, int PBUGSW);
 
 // Full SETBFC signature (source.f L31512-31516):
 extern void SETBFC_full(
@@ -967,27 +967,215 @@ L300_rtx:
 
 // COULIN is now fully implemented in coulin_translated.cpp.
 
-// GENBNX_full — stub
+// GENBNX_full — translated from source.f L17285-17556
+// Generates B-factor index array (BINDEX) for coupled-channels Coulomb integrals.
+// IPASS=1: counts B-factor sets needed, computes MBINDX/NMBFAC/NMFFAC/MXLXGS/MXLXBF
+// IPASS=2: fills BINDEX with channel pairs, L ranges, storage offsets
 void GENBNX_full(
     int IPASS, int& NBINDX, int& MBINDX, int* BINDEX,
     int NBASCP, int MBASCP, int* BASCUP,
     int MBASDF, int* BASDEF,
     int MCHNDF, float* CHNDEF,
     int& NMBFAC, int& NMFFAC, int& MXLXGS, int& MXLXBF,
-    int COULSW, int PBUGSW)
+    int& COULSW, int PBUGSW)
 {
-    (void)IPASS; (void)BINDEX;
-    (void)NBASCP; (void)MBASCP; (void)BASCUP;
-    (void)MBASDF; (void)BASDEF;
-    (void)MCHNDF; (void)CHNDEF;
-    (void)COULSW; (void)PBUGSW;
-    NBINDX = 0; MBINDX = 9;
-    NMBFAC = 0; NMFFAC = 0; MXLXGS = 0;
-    // MXLXBF is an in/out — leave as is
-    std::printf(" GENBNX_full: stub — translate GENBNX from source.f L17285\n");
+    // Column-major access macros (1-based Fortran indexing)
+    #define BINDEX_F(i, j) BINDEX[((j)-1)*MBINDX + ((i)-1)]
+    #define BASCUP_F(i, j) BASCUP[((j)-1)*MBASCP + ((i)-1)]
+    #define BASDEF_F(i, j) BASDEF[((j)-1)*MBASDF + ((i)-1)]
+
+    // CHNDEF is declared INTEGER in Fortran but stored as REAL*4 —
+    // reinterpret as int* for integer access (Fortran type-punning)
+    int* CHNDEF_I = reinterpret_cast<int*>(CHNDEF);
+    #define CHNDEF_F(i, j) CHNDEF_I[((j)-1)*MCHNDF + ((i)-1)]
+
+    // NOTDEF as int bit pattern for INTEGER comparisons
+    // (Fortran EQUIVALENCE: undef4 <-> NOTDEF, both stored as 0xF0F0F0F0)
+    int NOTDEF_i = NOTDEF_INT;
+
+    // Local variables
+    int IBC, IBF, IB1, IB2, N1, N2, NN1, NN2;
+    int LAMBDA, LMJ1, LMJ2;
+    int INEG, I, II, NM1FRJ, NMBFRJ, NUMLIS;
+    bool BFACSW;
+
+    // ------------------------------------------------------------------
+    // BFACSW = NOBFAC .NE. 1
+    // ------------------------------------------------------------------
+    BFACSW = (SWITCH.NOBFAC != 1);
+
+    // WE START OUT WITH THESE 1 TOO LARGE FOR GENERATING POINTERS
+    NMBFAC = 1;
+    NMFFAC = 1;
+    if (IPASS == 2) goto L305;
+    MXLXGS = 0;
+    MXLXBF = 0;
+    NBINDX = 0;
+
+    // ------------------------------------------------------------------
+    // PASS 1 — process all basis-state couplings and determine
+    // maximum ranges of L needed for the B factors.
+    // ------------------------------------------------------------------
+    for (IBC = 1; IBC <= NBASCP; IBC++) {
+        BASCUP_F(9, IBC) = 0;
+
+        // Is there coulomb coupling?
+        // On IEEE must also check for -0 when using I*4 equiv R*4
+        if (BASCUP_F(6, IBC) == 0) goto L299;
+        if (BASCUP_F(6, IBC) == -2147483648) goto L299;  // ci3e: IEEE -0
+
+        // Find the involved channels
+        IB1 = BASCUP_F(1, IBC);
+        N1  = BASDEF_F(1, IB1);
+        IB2 = BASCUP_F(2, IBC);
+        N2  = BASDEF_F(1, IB2);
+
+        // We need B-factors for this pair of states.
+        // See if they have already been processed.
+        LAMBDA = BASCUP_F(4, IBC) / 2;
+        LMJ1 = BASDEF_F(3, IB1);
+        LMJ2 = BASDEF_F(3, IB2);
+        if (NBINDX == 0) goto L200;
+        for (IBF = 1; IBF <= NBINDX; IBF++) {
+            if (LAMBDA != BINDEX_F(1, IBF)) goto L149;
+            NN1 = BINDEX_F(2, IBF);
+            NN2 = BINDEX_F(3, IBF);
+            if (N1 == NN1 && N2 == NN2) goto L220;
+            if (N1 == NN2 && N2 == NN1) goto L230;
+        L149:
+            ;
+        }
+
+        // We need a new set of B factors for this pair of channels
+        // and LAMBDA.  Start collecting statistics.
+    L200:
+        NBINDX = NBINDX + 1;
+        BINDEX_F(1, NBINDX) = LAMBDA;
+        BINDEX_F(2, NBINDX) = N1;
+        BINDEX_F(3, NBINDX) = N2;
+        BINDEX_F(4, NBINDX) = LMJ1;
+        BINDEX_F(5, NBINDX) = LMJ2;
+        BINDEX_F(6, NBINDX) = LMJ1;
+        BINDEX_F(7, NBINDX) = LMJ2;
+        BINDEX_F(9, NBINDX) = 0;
+        BASCUP_F(9, IBC) = NBINDX;
+        IBF = NBINDX;
+        MXLXBF = MAX0(MXLXBF, LAMBDA);
+        goto L250;
+
+        // This channel has been processed, collect maximum requirements.
+    L220:
+        BINDEX_F(4, IBF) = MAX0(BINDEX_F(4, IBF), LMJ1);
+        BINDEX_F(5, IBF) = MAX0(BINDEX_F(5, IBF), LMJ2);
+        BINDEX_F(6, IBF) = MIN0(BINDEX_F(6, IBF), LMJ1);
+        BINDEX_F(7, IBF) = MIN0(BINDEX_F(7, IBF), LMJ2);
+        BASCUP_F(9, IBC) = IBF;
+        goto L250;
+
+        // Found in reverse order
+    L230:
+        BINDEX_F(4, IBF) = MAX0(BINDEX_F(4, IBF), LMJ2);
+        BINDEX_F(5, IBF) = MAX0(BINDEX_F(5, IBF), LMJ1);
+        BINDEX_F(6, IBF) = MIN0(BINDEX_F(6, IBF), LMJ2);
+        BINDEX_F(7, IBF) = MIN0(BINDEX_F(7, IBF), LMJ1);
+        BASCUP_F(9, IBC) = -IBF;
+        // Store minimum LX for channels requiring FF2 integrals
+    L250:
+        if (N1 == 1 || N2 != 1) goto L299;
+        if (SWITCH.IBRNSB == 1) goto L299;
+        COULSW = 1;  // .TRUE.
+        {
+            int L_loc = LAMBDA;
+            if (CHNDEF_F(15, N1) != NOTDEF_i)
+                L_loc = MIN0(L_loc, CHNDEF_F(15, N1));
+            CHNDEF_F(15, N1) = L_loc;
+        }
+
+        // Indicate that this pair of channels needs Coulomb FF2 integrals
+        BINDEX_F(9, IBF) = 1;
+        MXLXGS = MAX0(MXLXGS, LAMBDA);
+
+    L299:
+        ;
+    }
+
+    if (PBUGSW) std::printf("0%8d SETS OF B-FACTORS NEEDED;   MAXIMUM LX FOR F, B FACTORS =%5d%5d\n",
+                            NBINDX, MXLXGS, MXLXBF);
+    goto L_RETURN;
+
+    // ------------------------------------------------------------------
+    // PASS 2 — process the B-index array.  Order the channels
+    // so that L(1)-J < L(2)-J to minimize storage used for B factors.
+    // Compute required B-factor size and store pointers.
+    // ------------------------------------------------------------------
+L305:
+    if (NBINDX == 0) goto L800;
+
+    for (IBF = 1; IBF <= NBINDX; IBF++) {
+        INEG = +1;
+        if (BINDEX_F(6, IBF) > BINDEX_F(7, IBF)) goto L330;
+        INEG = -1;
+        for (I = 2; I <= 6; I += 2) {
+            II = BINDEX_F(I, IBF);
+            BINDEX_F(I, IBF) = BINDEX_F(I + 1, IBF);
+            BINDEX_F(I + 1, IBF) = II;
+        }
+
+    L330:
+        BINDEX_F(8, IBF) = INEG * NMBFAC;
+        // The subscripting scheme for the B factors is given in SETBFC.
+        NM1FRJ = (BINDEX_F(4, IBF) - BINDEX_F(6, IBF)) / 4 + 1;
+        NMBFRJ = (BINDEX_F(1, IBF) + 1) * NM1FRJ;
+        if (BFACSW) NMBFAC = NMBFAC + NMBFRJ;
+
+        // Store number of FF2 integrals per J-value
+        if (BINDEX_F(9, IBF) != 1) goto L390;
+        BINDEX_F(9, IBF) = NMFFAC;
+        N2 = BINDEX_F(3, IBF);
+        NUMLIS = CHNDEF_F(15, N2) - INTGER.LMIN + 1;
+        NMFFAC = NMFFAC + NMBFRJ * NUMLIS;
+    L390:
+        if (PBUGSW) std::printf(" LX, CH1, CH2, L-J, ..., BPTR =%10d%10d%10d%10d%10d%10d%10d%10d%10d\n",
+                                BINDEX_F(1, IBF), BINDEX_F(2, IBF), BINDEX_F(3, IBF),
+                                BINDEX_F(4, IBF), BINDEX_F(5, IBF), BINDEX_F(6, IBF),
+                                BINDEX_F(7, IBF), BINDEX_F(8, IBF), BINDEX_F(9, IBF));
+    }
+
+    // ------------------------------------------------------------------
+    // PASS 3 — scan basis-state coupling array and indicate those
+    // B-factors that will be stored in reverse order.
+    // ------------------------------------------------------------------
+    for (IBC = 1; IBC <= NBASCP; IBC++) {
+        IBF = BASCUP_F(9, IBC);
+        if (IBF == 0) goto L449;
+        if (BINDEX_F(8, IABS(IBF)) < 0) BASCUP_F(9, IBC) = -IBF;
+    L449:
+        ;
+    }
+
+    // ------------------------------------------------------------------
+    // PASS 4 — scan B-index array and make all pointers > 0
+    // ------------------------------------------------------------------
+    for (IBF = 1; IBF <= NBINDX; IBF++) {
+        BINDEX_F(8, IBF) = IABS(BINDEX_F(8, IBF));
+    }
+
+L800:
+    NMBFAC = NMBFAC - 1;
+    NMFFAC = NMFFAC - 1;
+    if (PBUGSW) std::printf(" TOTAL NUMBER OF B AND FF2 FACTORS:%10d (PER J-VALUE)%10d\n",
+                            NMBFAC, NMFFAC);
+
+L_RETURN:
+    #undef BINDEX_F
+    #undef BASCUP_F
+    #undef BASDEF_F
+    #undef CHNDEF_F
+    return;
 }
 
-// SETBFC_full — stub
+// SETBFC_full — translated from source.f L31605-31891
+// Computes B-factors or FF2 integrals from Coulomb functions
 void SETBFC_full(
     int NBINDX, int MBINDX, int* BINDEX,
     int MCHNDF, int* CHNDEF_i, float* RCHNDF,
@@ -999,37 +1187,242 @@ void SETBFC_full(
     double* WRKWK, double* FIWORK, int IDIM2,
     double* WRKST, int& IRET, double& CLTIME)
 {
-    (void)NBINDX; (void)MBINDX; (void)BINDEX;
-    (void)MCHNDF; (void)CHNDEF_i; (void)RCHNDF;
-    (void)NUMLIS; (void)LIS; (void)R2S_arg; (void)LMXMX;
-    (void)SIG1; (void)SIG2;
-    (void)RLOWER; (void)ALLSW; (void)IRORC;
-    (void)NMBFAC; (void)BFAC;
-    (void)FFWORK; (void)IDIM1; (void)LDLDIM;
-    (void)WRKWK; (void)FIWORK; (void)IDIM2;
-    (void)WRKST;
-    IRET   = 0;
-    CLTIME = 0.0;
-    std::printf(" SETBFC_full: stub — translate SETBFC from source.f L31512\n");
+    #define BINDEX_F(i, j) BINDEX[((j)-1)*MBINDX + ((i)-1)]
+    #define CHNDEF_F(i, j) CHNDEF_i[((j)-1)*MCHNDF + ((i)-1)]
+    #define RCHNDF_F(i, j) RCHNDF[((j)-1)*MCHNDF + ((i)-1)]
+    #define BFAC_F(ic, ib, ili) BFAC[((ili)-1)*NMBFAC*IRORC + ((ib)-1)*IRORC + ((ic)-1)]
+    #define FFWORK_F(i, j) FFWORK[((j)-1)*IDIM1 + ((i)-1)]
+    #define FIWORK_F(i, j) FIWORK[((j)-1)*IDIM2 + ((i)-1)]
+
+    int IPRNT = INTGER.IPRINT / 10;
+    if (ALLSW) IPRNT = INTGER.IPRINT / 100;
+    IPRNT = IPRNT % 10;
+    bool PBUGSW = IPRNT >= 3;
+    CLTIME = 0;
+
+    for (int IBF = 1; IBF <= NBINDX; IBF++) {
+        int IGO = 350;
+        if (ALLSW) goto L130;
+        if (BINDEX_F(9, IBF) == 0) continue;
+        IGO = 360;
+
+    L130:
+        int LX     = BINDEX_F(1, IBF);
+        int IC1    = BINDEX_F(2, IBF);
+        int IC2    = BINDEX_F(3, IBF);
+        int MXLMJ1 = BINDEX_F(4, IBF);
+        int MXLMJ2 = BINDEX_F(5, IBF);
+        int MNLMJ1 = BINDEX_F(6, IBF);
+        int MNLMJ2 = BINDEX_F(7, IBF);
+        int LB     = BINDEX_F(8, IBF);
+        double ETA1 = (double)RCHNDF_F(6, IC1);
+        double AK1  = (double)RCHNDF_F(7, IC1);
+        double ETA2 = (double)RCHNDF_F(6, IC2);
+        double AK2  = (double)RCHNDF_F(7, IC2);
+
+        double TEMP = INTGER.IZS[1] * INTGER.IZS[3] * FLOAT_common.AM
+                    / (CNSTNT.AFINE * CNSTNT.HBARC);
+        double X = FLOAT_common.ECM - (double)RCHNDF_F(3, IC1) - (double)RCHNDF_F(5, IC1);
+        AK1 = std::sqrt(2.0 * FLOAT_common.AM * X) / CNSTNT.HBARC;
+        ETA1 = TEMP / AK1;
+        X = FLOAT_common.ECM - (double)RCHNDF_F(3, IC2) - (double)RCHNDF_F(5, IC2);
+        AK2 = std::sqrt(2.0 * FLOAT_common.AM * X) / CNSTNT.HBARC;
+        ETA2 = TEMP / AK2;
+
+        int NUMLIS_loc = NUMLIS;
+        int LMXMX_loc = LMXMX;
+
+        if (!ALLSW) {
+            int LIMOST = CHNDEF_F(15, IC2);
+            NUMLIS_loc = LIMOST - LIS[0] / 2 + 1;
+            LMXMX_loc = LIMOST + LX;
+            LB = BINDEX_F(9, IBF);
+            goto L190;
+        }
+
+        DSGMAL(ETA1, LMXMX_loc + LX, SIG1);
+    L190:
+        DSGMAL(ETA2, LMXMX_loc + LX, SIG2);
+
+        double FAC = -0.5 * R2S_arg[3] / std::sqrt(AK1 * AK2)
+                   * 2.0 * FLOAT_common.AM / (CNSTNT.HBARC * CNSTNT.HBARC);
+        if (!ALLSW) FAC = 4.0 * FAC;
+
+        int LMNMN = MAX0(INTGER.LMIN + (MNLMJ1 + MNLMJ2 - 3) / 4, LX / 2);
+
+        if (PBUGSW)
+            std::printf("0SETBFC, ETA1, K1, ETA2, K2 =%20.5G%20.5G%20.5G%20.5G\n"
+                        "    LX, MXLMJ1, MXLMJ2, MNLMJ1, MNLMJ2, NUMLIS, LMXMX,"
+                        " LMNMN =%8d%8d%8d%8d%8d%8d%8d%8d\n",
+                ETA1, AK1, ETA2, AK2,
+                LX, MXLMJ1, MXLMJ2, MNLMJ1, MNLMJ2, NUMLIS_loc, LMXMX_loc, LMNMN);
+
+        COULIN(LX + 1, LX, LMNMN, LMXMX_loc,
+               ETA1, AK1, SIG1, ETA2, AK2, SIG2, RLOWER, ALLSW,
+               &FFWORK_F(1, 1), &FFWORK_F(1, 2), &FFWORK_F(1, 3), &FFWORK_F(1, 4),
+               LDLDIM, FLOAT_common.ACCINE, FLOAT_common.COULML,
+               INTGER.MXCOUL, INTGER.NPCOUL,
+               WRKWK, &FIWORK_F(1, 1), &FIWORK_F(1, 2),
+               &FIWORK_F(1, 3), &FIWORK_F(1, 4),
+               WRKST, IPRNT, IRET, TEMP);
+        CLTIME = CLTIME + TEMP;
+        if (IRET != 0) goto L9960;
+
+        int MAXDEL = MAX0(2, LX);
+        int NM1FRJ = (MXLMJ1 - MNLMJ1) / 4 + 1;
+        int NMBFRJ = (LX + 1) * NM1FRJ;
+
+        for (int ILI = 1; ILI <= NUMLIS_loc; ILI++) {
+            int J = LIS[0] - 2 + 2 * ILI;
+            if (ALLSW) J = 2 * LIS[ILI - 1];
+            int MINL1 = (MNLMJ1 + J) / 2;
+            int L1ST = MAX0(MINL1, 0);
+            L1ST = L1ST + (L1ST - MINL1) % 2;
+
+            int L1END = (MXLMJ1 + J) / 2;
+            int L2_base = (MNLMJ2 + J) / 2;
+            int L2ST = MAX0(L2_base, 0);
+            L2ST = L2ST + (L2ST - L2_base) % 2;
+            int L2END = (MXLMJ2 + J) / 2;
+
+            if (PBUGSW)
+                std::printf(" L1ST, L1END, L2ST, L2END =%8d%8d%8d%8d\n",
+                    L1ST, L1END, L2ST, L2END);
+
+            for (int L1 = L1ST; L1 <= L1END; L1 += 2) {
+                int L2MN = MAX0(L2ST, std::abs(L1 - LX));
+                L2MN = L2MN + (L2MN - L2ST) % 2;
+                int L2MX = MIN0(L2END, L1 + LX);
+                if (L2MX < L2MN) continue;
+
+                if (L1 + L2MN < 2 * LMNMN || L1 + L2MX > 2 * LMXMX_loc) goto L9950;
+
+                for (int L2 = L2MN; L2 <= L2MX; L2 += 2) {
+                    int LDEL = L1 - L2;
+                    int ID = (MAXDEL - LDEL) >> 1;
+                    int IL = L2 + (L1 - 2 * LMNMN);
+                    int I1 = ID + IL * LDLDIM + 1;
+                    int I = (LX + 1) * (L1 - MINL1) - L1 + LX + L2;
+                    I = I >> 1;
+
+                    if (IGO == 350) {
+                        BFAC_F(1, I + LB, ILI) = (float)(FAC * (FFWORK_F(I1, 2) - FFWORK_F(I1, 3)));
+                        BFAC_F(2, I + LB, ILI) = (float)(FAC * (FFWORK_F(I1, 1) + FFWORK_F(I1, 4)));
+                    } else {
+                        I = I + NMBFRJ * (ILI - 1);
+                        BFAC_F(1, LB + I, 1) = (float)(FAC * FFWORK_F(I1, 1));
+                    }
+                }
+            }
+        }
+    }
+
+    IRET = 0;
+    goto L_RETURN;
+
+L9950:
+    std::printf("0**** INTERNAL ERROR IN SETBFC AT 9950\n");
+    IRET = -1;
+    goto L_RETURN;
+
+L9960:
+    std::printf("0**** ERROR IN COULIN: IRET=%d\n", IRET);
+
+L_RETURN:
+    #undef BINDEX_F
+    #undef CHNDEF_F
+    #undef RCHNDF_F
+    #undef BFAC_F
+    #undef FFWORK_F
+    #undef FIWORK_F
+    return;
 }
 
-// SETFG_full — stub
+// SETFG_full — translated from source.f L32481-32573
+// Computes all F and G Coulomb functions for coupled channels.
+// FG is REAL*4(4, NBASDF, NUMLIS) — c4f path.
+// LIS is INTEGER (stored in double* via allocator; reinterpret).
 void SETFG_full(
     int NCHNDF, int MCHNDF, int* CHNDEF, float* RCHNDF,
     int NBASDF, int MBASDF, int* BASDEF,
     int MCHNVL, double* CHNVAL,
-    int NUMLIS, double* LIS,
-    double* FG,
+    int NUMLIS, double* LIS_d,
+    double* FG_d,
     int L1, int L2P1,
     double* FGWORK, double R1, double R2, int& IRET)
 {
-    (void)NCHNDF; (void)MCHNDF; (void)CHNDEF; (void)RCHNDF;
-    (void)NBASDF; (void)MBASDF; (void)BASDEF;
-    (void)MCHNVL; (void)CHNVAL;
-    (void)NUMLIS; (void)LIS;
-    (void)FG;
-    (void)L1; (void)L2P1;
-    (void)FGWORK; (void)R1; (void)R2;
+    // Reinterpret LIS as int* (stored as INTEGER in allocator)
+    int* LIS = reinterpret_cast<int*>(LIS_d);
+    // FG is REAL*4 array: FG(4, NBASDF, NUMLIS) — 1-based
+    float* FG = reinterpret_cast<float*>(FG_d);
+
+    // Access macros for column-major Fortran arrays (1-based)
+    #define CHNDEF_F(i, j)  CHNDEF[((j)-1)*MCHNDF + ((i)-1)]
+    #define BASDEF_F(i, j)  BASDEF[((j)-1)*MBASDF + ((i)-1)]
+    #define CHNVAL_F(i, j)  CHNVAL[((j)-1)*MCHNVL + ((i)-1)]
+    #define FG_F(i, ib, ili)  FG[((ili)-1)*NBASDF*4 + ((ib)-1)*4 + ((i)-1)]
+    // FGWORK(L2P1, 6) — 1-based
+    #define FGWORK_F(i, j)   FGWORK[((j)-1)*L2P1 + ((i)-1)]
+
+    int L2 = L2P1 - 1;
+
+    // Loop through the channels array
+    // For each channel compute all the Coulomb functions
+    for (int NC = 1; NC <= NCHNDF; NC++) {
+        double AK  = CHNVAL_F(1, NC);
+        double ETA = CHNVAL_F(2, NC);
+        int IB1 = CHNDEF_F(8, NC);
+        int IB2 = CHNDEF_F(9, NC) + IB1 - 1;
+
+        double RHO = AK * R1;
+        int IFLAG;
+        RCWFN(RHO, ETA, L1, L2, &FGWORK_F(1,1),
+              &FGWORK_F(1,5), &FGWORK_F(1,2), &FGWORK_F(1,6),
+              1.0e-12, IFLAG);
+        if (IFLAG != 0) {
+            std::printf("\n**** RCWFN ERROR IN SETFG:\n%8d%8d%20.10G%20.10G%20.10G%8d%8d\n",
+                        IFLAG, NC, ETA, AK, RHO, L1, L2);
+            IRET = 0;
+            goto done;
+        }
+
+        RHO = AK * R2;
+        RCWFN(RHO, ETA, L1, L2, &FGWORK_F(1,3),
+              &FGWORK_F(1,5), &FGWORK_F(1,4), &FGWORK_F(1,6),
+              1.0e-12, IFLAG);
+        if (IFLAG != 0) {
+            std::printf("\n**** RCWFN ERROR IN SETFG:\n%8d%8d%20.10G%20.10G%20.10G%8d%8d\n",
+                        IFLAG, NC, ETA, AK, RHO, L1, L2);
+            IRET = 0;
+            goto done;
+        }
+
+        // Loop through the L-J's for this channel
+        for (int IB = IB1; IB <= IB2; IB++) {
+            int LMJ = BASDEF_F(3, IB);
+
+            // Now loop through the required J's and store F and G
+            for (int ILI = 1; ILI <= NUMLIS; ILI++) {
+                // NOTE THAT J AND NOT 2*J IS STORED FOR NOW
+                int J = 2 * LIS[ILI - 1];  // LIS is 0-based after reinterpret_cast
+                int L = LMJ + J;
+                if (L < 0) continue;
+                L = L >> 1;  // ishft(L, -1)
+
+                for (int I = 1; I <= 4; I++) {
+                    FG_F(I, IB, ILI) = (float)FGWORK_F(L + 1, I);
+                }
+            }
+        }
+    }
+
     IRET = 1;
-    std::printf(" SETFG_full: stub — translate SETFG from source.f L32481\n");
+
+done:
+    #undef CHNDEF_F
+    #undef BASDEF_F
+    #undef CHNVAL_F
+    #undef FG_F
+    #undef FGWORK_F
+    return;
 }
