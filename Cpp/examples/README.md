@@ -29,6 +29,15 @@ rm -f fort.*
 | `transfer_208Pb_dp.in` | 208Pb(d,p)209Pb g.s. 9/2+ | 20 MeV | 10.198 |
 | `transfer_140Ce_3Hea.in` | 140Ce(3He,a)139Ce g.s. 3/2- | 30 MeV | 0.04970 |
 
+## Transfer DWBA with Phiffer Bound States
+
+The phiffer linkule computes single-particle bound state wave functions by direct Numerov integration, as an alternative to the standard Woods-Saxon solver.
+
+| File | Reaction | E_lab | sigma_tot (mb) |
+|------|----------|-------|----------------|
+| `transfer_208Pb_16O15N_phiffer.in` | 208Pb(16O,15N)209Bi g.s. 9/2- | 104 MeV | 0.00023 |
+| `transfer_48Ca_16O15N_phiffer.in` | 48Ca(16O,15N)49Sc g.s. 7/2- | 56 MeV | 1.2952 |
+
 ## Inelastic DWBA
 
 | File | Reaction | E_lab | sigma_tot (mb) |
