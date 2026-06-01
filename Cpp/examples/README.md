@@ -29,8 +29,9 @@ Requires the Cleopatra binary at `/home/ryan/ptolemy_2019/digios/analysis/Cleopa
 
 ## Test Results
 
-- **Integrated cross sections:** 24/24 PASS (0.000%)
+- **Integrated cross sections:** 25/25 PASS (0.000%)
 - **Angle-by-angle precision:** 21/24 at 0.0000%, 3 at deep diffraction minima where all binaries (C++, gfortran, Cleopatra) disagree with each other
+- **Random fuzz** (800 cases, seed=42): 789 PASS / 9 WARN / 2 FAIL (FAILs are FP sensitivity + d-inelastic extrapolation failure shared with Fortran). See `Claude_attack/docs/tested_cases.md`.
 
 ## Elastic Scattering
 
@@ -45,6 +46,7 @@ Requires the Cleopatra binary at `/home/ryan/ptolemy_2019/digios/analysis/Cleopa
 | `test_elastic_heavy_ion` | 16O + 28Si | 60 MeV | 1543.309 | STEPSPER, ASYMPTOPIA |
 | `test_elastic_npcoulomb` | p + 208Pb | 50 MeV | 1791.919 | NPCOULOMB=12 |
 | `test_elastic_ecm` | a + 40Ca | ECM=30 | 2301.499 | ECM keyword |
+| `test_elastic_shape` | 16O + 48Ca | 56 MeV | 1316.212 / 1316.205 | SHAPE potential-form linkule (tabulated WS, two passes) |
 
 ## Transfer DWBA
 

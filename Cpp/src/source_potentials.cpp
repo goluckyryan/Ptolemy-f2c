@@ -485,8 +485,10 @@ L800:
     {
         char8 lname;
         std::memcpy(lname.data, reinterpret_cast<char*>(&LNKBLK.LNKADR[I][1]), 8);
-        int myints[3]; myints[1] = LNKBLK.LNKADR[I][5]; myints[2] = LNKBLK.LNKADR[I][6];
-        LINKUL(LNKBLK.LNKADR[I][3], lname, myints, I, 3, IRET,
+        // Pass &LNKADR[I][5] directly — Fortran original (CALL LINKUL ..., LNKADR(5,I), ...)
+        // gives linkules a persistent 2-element slot inside the COMMON block for MYINTS(1)/MYINTS(2)
+        // (0-based MYINTS[0]/MYINTS[1] in C++), so state survives between IREQUE=1 setup and IREQUE=3 execute calls.
+        LINKUL(LNKBLK.LNKADR[I][3], lname, &LNKBLK.LNKADR[I][5], I, 3, IRET,
                IDUMMY, DUMMY, 0.0, STEPSZ_loc, NSTEPP,
                ALLOC_base(LL), &DUMMY, (char*)"");
     }

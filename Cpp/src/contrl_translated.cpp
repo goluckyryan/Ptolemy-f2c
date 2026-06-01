@@ -668,9 +668,9 @@ L250:
     if (NXWORD(WORD.data) != 0) goto L930;
     if (ICNTT == 0) ISTART(ISIZE);
     ICNTT = 1;
-    DEFINE(WORD, NUM1, NUM2);
+    DEFINE(WORD, NUM1, ISIZE);  // must pass ISIZE (allocator size), not NUM2 — NUM2 is uninitialized here
     std::printf("%8d NUMBERS READ TO DEFINE OBJECT %.8s\n", NUM1, WORD.data);
-    if (NUM1 > NUM2) goto L950;
+    if (NUM1 > ISIZE) goto L950;
     goto L10;
 
 // -----------------------------------------------------------------------
