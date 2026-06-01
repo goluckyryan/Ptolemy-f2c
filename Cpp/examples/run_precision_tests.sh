@@ -1,11 +1,11 @@
 #!/bin/bash
 # Full precision test: compare ALL cross section values (angle-by-angle)
 # between C++ and Cleopatra for every test input.
-# Usage: cd Claude_attack/Cpp && bash examples/tests/run_precision_tests.sh
+# Usage: cd Claude_attack/Cpp && bash examples/run_precision_tests.sh
 
 CPP="./ptolemy"
 CLEOPATRA="/home/ryan/ptolemy_2019/digios/analysis/Cleopatra/ptolemy"
-TESTDIR="examples/tests"
+TESTDIR="examples"
 
 if [ ! -x "$CPP" ]; then echo "ERROR: C++ binary not found. Run 'make' first."; exit 1; fi
 if [ ! -x "$CLEOPATRA" ]; then echo "ERROR: Cleopatra not found at $CLEOPATRA"; exit 1; fi

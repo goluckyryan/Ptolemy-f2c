@@ -1,12 +1,12 @@
 #!/bin/bash
 # Comprehensive test suite: compare C++ ptolemy against Cleopatra reference
-# Usage: cd Claude_attack/Cpp && bash examples/tests/run_tests.sh
+# Usage: cd Claude_attack/Cpp && bash examples/run_tests.sh
 
 set -e
 
 CPP="./ptolemy"
 CLEOPATRA="/home/ryan/ptolemy_2019/digios/analysis/Cleopatra/ptolemy"
-TESTDIR="examples/tests"
+TESTDIR="examples"
 
 if [ ! -x "$CPP" ]; then
     echo "ERROR: C++ binary not found. Run 'make' first."
