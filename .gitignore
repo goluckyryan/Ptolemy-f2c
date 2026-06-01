@@ -35,3 +35,5 @@ reference/
 
 !Cpp/*.in
 !Cpp/examples/*.in
+!Cpp/examples/tests/*.in
+!Cpp/examples/tests/*.sh
