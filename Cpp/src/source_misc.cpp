@@ -413,7 +413,7 @@ L17:
     L26:
         ISW2 = false;
         X[IAUS] = W2;
-        goto L39;
+        goto L37;
     L27:
         W6 = W1 + C16(1.0, 0) / W7;
     L28:
