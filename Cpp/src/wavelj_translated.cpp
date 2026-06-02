@@ -227,11 +227,15 @@ L259: ;
     N = NSTEP - ISTRT + 1;
     RSTART = ISTRT * FLOAT_common.STEPSZ;
 //
+    // Linkule's ARRAY1(I), ARRAY2(I) use Fortran 1-based indexing. Pass pointer P
+    // such that P[1] is the first element (i.e., shift by -1). For the scalar A1,
+    // use a 2-slot box so that A1_box[1] = A1 is read by linkule's ARRAY2(1).
+    double A1_box[2] = {0.0, A1};
     if (LNKBLK.LNKADR[1][3] == 0 || LNKBLK.LNKADR[1][4] != 1) goto L270;
     LINKUL(LNKBLK.LNKADR[1][3], *reinterpret_cast<char8*>(&LNKBLK.LNKADR[1][1]),
            &LNKBLK.LNKADR[1][5],
            1, 4, IRET,
-           L, (double)JP, RSTART, FLOAT_common.STEPSZ, N, &WAVR[ISTRT + 4], &A1, (char*)&NWP);
+           L, (double)JP, RSTART, FLOAT_common.STEPSZ, N, &WAVR[ISTRT + 4] - 1, A1_box, (char*)&NWP);
     if (IRET < 0) std::exit(7777);
 //
 L270:
@@ -240,7 +244,7 @@ L270:
     LINKUL(LNKBLK.LNKADR[2][3], *reinterpret_cast<char8*>(&LNKBLK.LNKADR[2][1]),
            &LNKBLK.LNKADR[2][5],
            2, 4, IRET,
-           L, (double)JP, RSTART, FLOAT_common.STEPSZ, N, &WAVI[ISTRT + 4], &A1, (char*)&NWP);
+           L, (double)JP, RSTART, FLOAT_common.STEPSZ, N, &WAVI[ISTRT + 4] - 1, A1_box, (char*)&NWP);
     if (IRET < 0) std::exit(7777);
 //
 //     COMPUTE FIRST TWO XSI'S

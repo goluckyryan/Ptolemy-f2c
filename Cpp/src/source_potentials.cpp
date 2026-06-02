@@ -554,17 +554,24 @@ void SETPOT(int& IRET)
     if (FLOAT_common.VSO == INTRNL.UNDEF) FLOAT_common.VSO = 0.0;
     if (FLOAT_common.TAU == INTRNL.UNDEF) FLOAT_common.TAU = 0.0;
 
-    // V real params must always be defined
+    // V real params must always be defined. Fortran logic (source.f L33227-33238):
+    //   if R0 defined → set R, then check A
+    //   elif R defined → check A
+    //   elif linkule set for real pot → GOTO 200 (skip BOTH R/R0 and A checks)
+    //   else → error "R OR R0 MUST BE DEFINED", then check A
+    bool skip_A_check = false;
     if (FLOAT_common.R0 != INTRNL.UNDEF) {
         FLOAT_common.R = (FLOAT_common.R0 + FLOAT_common.R0E * EEMUL
             + FLOAT_common.R0ESQ * EEMUL * EEMUL) * INTRNL.R0MASS;
     } else if (FLOAT_common.R == INTRNL.UNDEF) {
-        if (LNKBLK.LNKADR[1][3] == 0) {
+        if (LNKBLK.LNKADR[1][3] != 0) {
+            skip_A_check = true;  // linkule supplies the radial shape; A not needed either
+        } else {
             std::printf("\n**** R OR R0 MUST BE DEFINED.\n");
             IRET = 0;
         }
     }
-    if (FLOAT_common.A == INTRNL.UNDEF) {
+    if (!skip_A_check && FLOAT_common.A == INTRNL.UNDEF) {
         std::printf("\n**** A MUST BE DEFINED.\n");
         IRET = 0;
     }

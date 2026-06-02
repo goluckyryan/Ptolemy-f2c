@@ -119,7 +119,13 @@ inline double* FLOAT_arr() { return &FLOAT_common.A; }  // raw pointer, caller m
 // EQUIVALENCE aliases for FLOAT (use FLOAT_arr for correct padding offset)
 inline double& AMS(int I) { return FLOAT_arr(24 + I); }     // AMS(1)=AMA=pos25
 inline double* AMS()     { return &FLOAT_arr(25) - 1; }     // AMS()[I] 1-based
-inline double* PARAMS()  { return &FLOAT_common.PARAM1; }   // PARAMS(1)..PARAMS(20) — TODO: needs padding fix
+inline double* PARAMS()  { return &FLOAT_common.PARAM1; }   // raw pointer; ONLY safe for indices 0..4 (= Fortran PARAM1..PARAM5). For higher indices use PARAMS_at(i).
+// Fortran 1-based PARAMS(I) accessor, handles PAR620[16] 1-based padding.
+// Fortran PARAMS(1..5) = PARAM1..PARAM5; PARAMS(6..20) = PAR620(1..15).
+inline double& PARAMS_at(int i) {
+    if (i <= 5) return (&FLOAT_common.PARAM1)[i-1];
+    return FLOAT_common.PAR620[i-5];   // PAR620[1..15] are real data; PAR620[0] is padding
+}
 inline double* VTEN()    { return &FLOAT_common.VTR; }      // TODO: needs padding fix
 inline double* RTEN()    { return &FLOAT_common.RTR; }
 inline double* RTEN0()   { return &FLOAT_common.RTR0; }

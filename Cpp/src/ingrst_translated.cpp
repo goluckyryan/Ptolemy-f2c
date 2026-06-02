@@ -816,8 +816,8 @@ L780:
             if (MODL != 6) goto L782;
             TVR   = 1.0;
             INDXP = (int)J_dbl / 100;
-            R     = R0MASS * PARAMS()[INDXP - 1];      // PARAMS(INDXP) — 1-based
-            TAR   = PARAMS()[INDXP];                   // PARAMS(INDXP+1) — 1-based
+            R     = R0MASS * PARAMS_at(INDXP);         // Fortran PARAMS(INDXP)
+            TAR   = PARAMS_at(INDXP + 1);              // Fortran PARAMS(INDXP+1)
             POWRL = 1.0;
             TVI   = 0.0;
             VSI   = 0.0;

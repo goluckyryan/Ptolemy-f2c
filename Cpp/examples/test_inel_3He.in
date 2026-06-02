@@ -1,0 +1,13 @@
+HEADER: 58NI(3HE,3HE')58NI* 2+ 1.45 MeV at 50 MeV — helion inelastic
+$ 3He-induced inelastic scattering with simple WS potential.
+JBIGA=0+
+REACTION: 58NI(3HE, 3HE)58NI(2+ 1.450) ELAB=50
+BELX = 0.18
+PARAMETERSET INELOCA3
+INCOMING
+V=155.0 R0=1.20 A=0.72 VI=20.0 RI0=1.40 AI=0.88 RC0=1.40
+;
+OUTGOING
+;
+;
+RETURN

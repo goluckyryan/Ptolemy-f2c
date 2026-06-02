@@ -29,9 +29,10 @@ Requires the Cleopatra binary at `/home/ryan/ptolemy_2019/digios/analysis/Cleopa
 
 ## Test Results
 
-- **Integrated cross sections:** 25/25 PASS (0.000%)
+- **Integrated cross sections:** 31/31 PASS (0.000%)
 - **Angle-by-angle precision:** 21/24 at 0.0000%, 3 at deep diffraction minima where all binaries (C++, gfortran, Cleopatra) disagree with each other
 - **Random fuzz** (800 cases, seed=42): 789 PASS / 9 WARN / 2 FAIL (FAILs are FP sensitivity + d-inelastic extrapolation failure shared with Fortran). See `Claude_attack/docs/tested_cases.md`.
+- **Potential-form linkule coverage:** SHAPE, GAUSSIAN, FIXEDWOO, PARITWOO, JDEPEN, JDEPENWS all verified to match Cleopatra exactly. SPLINE and LAGRANGE run but have small (≤2%) discrepancies under investigation. DEFORMED, BKGPTELP, LTSTELP, TWOSHAPE remain stubs.
 
 ## Elastic Scattering
 
@@ -47,6 +48,11 @@ Requires the Cleopatra binary at `/home/ryan/ptolemy_2019/digios/analysis/Cleopa
 | `test_elastic_npcoulomb` | p + 208Pb | 50 MeV | 1791.919 | NPCOULOMB=12 |
 | `test_elastic_ecm` | a + 40Ca | ECM=30 | 2301.499 | ECM keyword |
 | `test_elastic_shape` | 16O + 48Ca | 56 MeV | 1316.212 / 1316.205 | SHAPE potential-form linkule (tabulated WS, two passes) |
+| `test_elastic_gaussian` | 16O + 48Ca | 56 MeV | 880.024 | GAUSSIAN potential-form linkule |
+| `test_elastic_fixedwoo` | 16O + 48Ca | 56 MeV | 880.181 | FIXEDWOO potential-form linkule (V pinned at PARAM1) |
+| `test_elastic_paritwoo` | 3He + 4He | 30 MeV | 1141.784 | PARITWOO linkule (parity-dependent WS depth, L-dependent path) |
+| `test_elastic_jdepen` | 16O + 48Ca | 56 MeV | 889.155 | JDEPEN linkule (J-dependent depth via 1+P1·J+P2·J²) |
+| `test_elastic_jdepenws` | 16O + 48Ca | 56 MeV | 880.139 | JDEPENWS linkule (J-dependent depth via Fermi factor, uses PARAMS_at) |
 
 ## Transfer DWBA
 
@@ -83,6 +89,7 @@ Requires the Cleopatra binary at `/home/ryan/ptolemy_2019/digios/analysis/Cleopa
 | `test_inel_heavy_ion` | 120Sn(16O,16O') 2+ 1.17 MeV | 200 MeV | 24.979 | Heavy-ion, LMAXADD=40 |
 | `test_inel_labangles` | 58Ni(a,a') 2+ 1.45 MeV | 50 MeV | 33.667 | LABANGLES keyword |
 | `test_inel_print2` | 40Ca(d,d') 2+ 3.35 MeV | 40 MeV | 42.597 | PRINT=2 verbose |
+| `test_inel_3He` | 58Ni(3He,3He') 2+ 1.45 MeV | 50 MeV | 20.460 | 3He-induced inelastic (exotic projectile) |
 
 ## Coupled Channels
 

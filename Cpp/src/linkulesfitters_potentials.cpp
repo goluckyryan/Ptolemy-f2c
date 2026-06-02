@@ -455,9 +455,9 @@ void JDEPENWS(char8 ALIAS, int* MYINTS, int IPOTYP, int IREQUE, int& IRETUR,
     NUMOUT = 0;
     IRETUR = 0;
 
-    // PARAM(10) and PARAM(11) — these are PARAMS()[9] and PARAMS()[10]
-    double PARM10 = PARAMS()[9];
-    double PARM11 = PARAMS()[10];
+    // Fortran PARAM(10) and PARAM(11) via padding-aware accessor.
+    double PARM10 = PARAMS_at(10);
+    double PARM11 = PARAMS_at(11);
     double V = TEMPVS_arr()[IPOTYP - 1];
     double A = TEMPVS_arr()[3 + IPOTYP];
     double R = FLOAT_common.R;
@@ -880,18 +880,19 @@ void SPLINE_linkule(char8 ALIAS, int* MYINTS, int IPOTYP, int IREQUE, int& IRETU
     NUMOUT = 0;
     IRETUR = 0;
 
-    // Get the defined points and values and order them
-    // PARAM is a 2x10 array: PARAM(1,IV) = R, PARAM(2,IV) = V
-    // In Fortran PARAMS()[0..19] = PARAM1..PARAM20 = PARAM(1,1)..PARAM(2,10)
-    double* PARAM = PARAMS();
+    // Get the defined points and values and order them.
+    // Fortran PARAM is a 2x10 array equivalenced to PARAM1..PARAM20:
+    //   PARAM(1,IV) = R-coord (Fortran PARAMS(2*IV-1))
+    //   PARAM(2,IV) = V-coord (Fortran PARAMS(2*IV))
+    // Use PARAMS_at to handle PAR620[16] 1-based padding correctly.
 
     int NV = 0;
     int IV = 0;
 
     // Find first valid pair
     while (IV < 10) {
-        double r_val = PARAM[2 * IV];
-        double v_val = PARAM[2 * IV + 1];
+        double r_val = PARAMS_at(2 * IV + 1);
+        double v_val = PARAMS_at(2 * IV + 2);
         if (r_val != UNDEF && v_val != UNDEF) {
             NV = 1;
             R_arr[1] = r_val;
@@ -905,8 +906,8 @@ void SPLINE_linkule(char8 ALIAS, int* MYINTS, int IPOTYP, int IREQUE, int& IRETU
 
     // Find remaining valid pairs and insert in order
     while (IV < 10) {
-        double r_val = PARAM[2 * IV];
-        double v_val = PARAM[2 * IV + 1];
+        double r_val = PARAMS_at(2 * IV + 1);
+        double v_val = PARAMS_at(2 * IV + 2);
         IV++;
         if (r_val == UNDEF || v_val == UNDEF) continue;
 
@@ -1043,15 +1044,15 @@ void LAGRANGE(char8 ALIAS, int* MYINTS, int IPOTYP, int IREQUE, int& IRETUR,
     // Interpolation order from INTGER — INTGER(38) = MAXFUN
     int IORDER = INTGER.MAXFUN;
 
-    // Get the defined points and values and order them
-    double* PARAM = PARAMS();
+    // Get the defined points and values and order them.
+    // Fortran PARAM(1,IV)/PARAM(2,IV) ↔ PARAMS_at(2*IV-1)/PARAMS_at(2*IV).
 
     int NV = 0;
     int IV = 0;
 
     while (IV < 10) {
-        double r_val = PARAM[2 * IV];
-        double v_val = PARAM[2 * IV + 1];
+        double r_val = PARAMS_at(2 * IV + 1);
+        double v_val = PARAMS_at(2 * IV + 2);
         if (r_val != UNDEF && v_val != UNDEF) {
             NV = 1;
             R_arr[1] = r_val;
@@ -1064,8 +1065,8 @@ void LAGRANGE(char8 ALIAS, int* MYINTS, int IPOTYP, int IREQUE, int& IRETUR,
     if (NV == 0) goto L950;
 
     while (IV < 10) {
-        double r_val = PARAM[2 * IV];
-        double v_val = PARAM[2 * IV + 1];
+        double r_val = PARAMS_at(2 * IV + 1);
+        double v_val = PARAMS_at(2 * IV + 2);
         IV++;
         if (r_val == UNDEF || v_val == UNDEF) continue;
 

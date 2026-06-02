@@ -1,0 +1,11 @@
+HEADER  FIXEDWOO linkule test — WS with potential pinned at fixed point
+$ Tests the FIXEDWOO potential-form linkule. The potential is a WS shape
+$ scaled so V(R=PARAM1) = TVR (the V keyword).
+CHANNEL  16O + 48CA
+ELAB = 56
+realpotential FIXEDWOO
+V = 1.0  R = 4.5  A = 0.6  REALPOWE = 1.0  PARAM1 = 3.0
+W = 5  RI0 = 1.27  AI = .5  RC0 = 1.2
+ELASTIC SCATTERING
+;
+end

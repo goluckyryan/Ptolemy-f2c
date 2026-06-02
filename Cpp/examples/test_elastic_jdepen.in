@@ -1,0 +1,10 @@
+HEADER  JDEPEN linkule test — J-dependent WS depth
+$ Tests the JDEPEN potential-form linkule. Depth scaled by (1 + PARAM1*J + PARAM2*J^2).
+CHANNEL  16O + 48CA
+ELAB = 56
+realpotential JDEPEN
+V = 50  R = 4.5  A = 0.6  REALPOWE = 1.0  PARAM1 = 0.01  PARAM2 = 0.0005
+W = 5  RI0 = 1.27  AI = .5  RC0 = 1.2
+ELASTIC SCATTERING
+;
+end
