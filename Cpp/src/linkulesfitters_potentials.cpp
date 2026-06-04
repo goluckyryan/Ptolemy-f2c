@@ -988,8 +988,10 @@ L600:
         }
 
         SPLNCB(NV, R_arr, V_arr, B, C_arr, D_arr);
+        // INTRPC expects 1-based ptrs (YS[1] = first element). ARRAY1 is already 1-based
+        // (caller passes ALLOC_base form), so &ARRAY1[NSTRT] - 1 yields YS[1] = ARRAY1[NSTRT].
         INTRPC(NV, R_arr, V_arr, B, C_arr, D_arr,
-               NOUT, ALLOC_base(LL + NSTRT), &ARRAY1[NSTRT]);
+               NOUT, ALLOC_base(LL + NSTRT), &ARRAY1[NSTRT] - 1);
 
         for (int I = NSTRT; I <= NLAST; I++) {
             ARRAY1[I] = -DEXP(ARRAY1[I]);
@@ -1041,8 +1043,11 @@ void LAGRANGE(char8 ALIAS, int* MYINTS, int IPOTYP, int IREQUE, int& IRETUR,
     NUMOUT = 0;
     IRETUR = 0;
 
-    // Interpolation order from INTGER — INTGER(38) = MAXFUN
-    int IORDER = INTGER.MAXFUN;
+    // Fortran: IORDER = INTGER(38) = PARITS(1). The LAGRANGE linkule co-opts the
+    // PARITS(1) slot to carry the interpolation order (not INTGER.MAXFUN as the
+    // original comment suggested). With no explicit order set, it defaults to 0
+    // (constant interpolation).
+    int IORDER = INTGER.PARITS[1];
 
     // Get the defined points and values and order them.
     // Fortran PARAM(1,IV)/PARAM(2,IV) ↔ PARAMS_at(2*IV-1)/PARAMS_at(2*IV).
@@ -1141,10 +1146,12 @@ L600:
         double VSIGN = -DSIGN(1.0, V_arr[NV]);
         int LNSTRT = 1;
 
+        // Fortran: IF (VSIGN*V(I-1) .GE. 0) GO TO 660 — exits when V(I-1) has
+        // OPPOSITE sign to V(NV) (i.e., a sign change has been found).
         int change_i = 0;
         for (int II = 2; II <= NV; II++) {
             int I = NV + 2 - II;
-            if (VSIGN * V_arr[I - 1] < 0.0) {
+            if (VSIGN * V_arr[I - 1] >= 0.0) {
                 change_i = I;
                 break;
             }
@@ -1156,8 +1163,10 @@ L600:
             int NSTRT2 = (int)((R_arr[LNSTRT] - RSTART) / STEPSZ + 2);
             int NFAIL;
             double WORST;
+            // AITKEN expects 1-based XOUT/FOUT (FOUT[1] = first element).
+            // ARRAY1 is already 1-based, so &ARRAY1[NSTRT] - 1 makes FOUT[1] = ARRAY1[NSTRT].
             AITKEN(MIN0(IORDER, LNSTRT - 1), 0.0, 0.0, LNSTRT, R_arr, V_arr,
-                   NSTRT2 - NSTRT, ALLOC_base(LL + NSTRT), &ARRAY1[NSTRT],
+                   NSTRT2 - NSTRT, ALLOC_base(LL + NSTRT), &ARRAY1[NSTRT] - 1,
                    NFAIL, WORST, A_work);
             for (int I = NSTRT; I <= NSTRT2; I++) {
                 ARRAY1[I] = -ARRAY1[I];
@@ -1177,9 +1186,11 @@ L600:
         {
             int NFAIL;
             double WORST;
+            // Same 1-based shift: ARRAY1, R_arr, V_arr are all 1-based; pass pointer - 1
+            // so AITKEN sees XIN[1]=R_arr[LNSTRT], FIN[1]=V_arr[LNSTRT], FOUT[1]=ARRAY1[NSTRT].
             AITKEN(LNORDR, 0.0, 0.0, NV - LNSTRT + 1,
-                   &R_arr[LNSTRT], &V_arr[LNSTRT],
-                   NOUT, ALLOC_base(LL + NSTRT), &ARRAY1[NSTRT],
+                   &R_arr[LNSTRT] - 1, &V_arr[LNSTRT] - 1,
+                   NOUT, ALLOC_base(LL + NSTRT), &ARRAY1[NSTRT] - 1,
                    NFAIL, WORST, A_work);
         }
 
@@ -1225,16 +1236,250 @@ L950:
 // added when their dependencies (WOODSX, DEFWOO) are available from Phase 8.
 // For now, they print a message and return an error.
 
+// ============================================================================
+// SUBROUTINE BKGPTElp — Baltz-Kauffmann-Glendenning-Pruess 2+ TELP linkule
+// Translated from linkulesfitters.f L190-L501.
+// Computes the imaginary potential as WS + surface + 2+ TELP (Baltz et al.).
+// Note: Fortran FKANDM(20) is a REAL*8 view of /KANDM/; FKANDM(ICHANW) = AKS(ICHANW),
+// FKANDM(ICHANW+16) = ETAS(ICHANW). Fortran INTRNL(5) as INTEGER view = ICHANB.
+// L-dependent linkule — IRETUR=+1 on IREQUE=1.
+// NOT yet exercised by any regression test (untested translation).
+// ============================================================================
+
 void BKGPTElp(char8 ALIAS, int* MYINTS, int IPOTYP, int IREQUE, int& IRETUR,
               int IUNIT, int& NUMOUT,
               int L, double J, double RSTART, double STEPSZ, int NUMPTS,
               double* ARRAY1, double* ARRAY2,
               char* ID, int* IPARAM)
 {
-    printf("\n**** BKGPTElp LINKULE NOT YET FULLY OPERATIONAL (needs WOODSX from Phase 8).\n");
-    IRETUR = -1;
+    static const char WORDS[3][9] = { "        ", "PROJCTIL", "  TARGET" };
+
+    NUMOUT = 0;
+    IRETUR = 0;
+
+    auto ATERM_fn = [](double DL, double ETA, double ETASQ, double AK) {
+        return ETA * AK*AK / (DL*DL) *
+               (ETA * (3.0*DL*DL + ETASQ) / std::pow(DL*DL + ETASQ, 2.0)
+                - DATAN(DL / ETA) / DL);
+    };
+    auto BTERM_fn = [](double DL, double ETA, double ETASQ, double AK) {
+        return 4.0 * ETA * AK * DL*DL / std::pow(DL*DL + ETASQ, 2.0);
+    };
+    auto CTERM_fn = [](double DL, double ETASQ) {
+        return 2.0 * std::pow(DL, 4.0) / std::pow(DL*DL + ETASQ, 2.0);
+    };
+
+    int    LWRK = 0, IWRK = 0;
+    double WP = 0.0, WPP = 0.0, AK = 0.0, ETA = 0.0;
+    double AC = 0.0, BC = 0.0, CC = 0.0;
+    double RC = 0.0, BETA = 0.0, RD = 0.0, FATRC = 0.0, DLC = 0.0;
+    int    IPORT = 0;
+    double R0MASS = 0.0;
+    double VI = 0.0, AI = 0.0, RI = 0.0, POWER = 0.0;
+    double VSI = 0.0, RSI = 0.0, ASI = 0.0;
+    double G2_val = 1.0;
+
+    if (IREQUE == 4) goto L700;
+
+    {
+        double UNDEF  = INTRNL.UNDEF;
+        int    NOTDEF = NOTDEF_INT;
+
+        VI    = TEMPVS_arr()[1];          // TEMPVS(2)
+        AI    = TEMPVS_arr()[5];          // TEMPVS(6)
+        RI    = FLOAT_common.RI;          // FLOAT(47)
+        POWER = FLOAT_common.POWIM;       // FLOAT(103)
+        VSI   = FLOAT_common.VSI;         // FLOAT(71)
+        RSI   = FLOAT_common.RSI;         // FLOAT(69)
+        ASI   = FLOAT_common.ASI;         // FLOAT(68)
+        G2_val = PARAMS_at(20);
+        if (G2_val == UNDEF) G2_val = 1.0;
+        int ICHANW_local = INTRNL.ICHANB; // Fortran INTRNL(5) as INTEGER view = ICHANB
+        AK   = AKS()[ICHANW_local];       // FKANDM(ICHANW)
+        RC   = FLOAT_common.RC;           // FLOAT(45)
+        int ZP = INTGER.IZP;
+        int ZT = INTGER.IZT;
+        ETA  = KANDM.ETAS[ICHANW_local];  // FKANDM(ICHANW+16) = ETAS(ICHANW)
+        double ALPHA = 1.0 / CNSTNT.AFINE;
+        double PI    = CNSTNT.PI;
+        double HBARC = CNSTNT.HBARC;
+        double E     = FLOAT_common.E;
+        double AM    = FLOAT_common.AM;
+        R0MASS = INTRNL.R0MASS;
+
+        if (IREQUE == 1) {
+            IPORT = IPARAM[4];            // Fortran IPARAM(5)
+            if (IPORT == NOTDEF) {
+                IPORT = 0;
+                if ((int)JBLOCK.JS[2] != (int)JBLOCK.JS[3]) IPORT = 1;
+                if ((int)JBLOCK.JS[4] != (int)JBLOCK.JS[5]) IPORT = 2;
+            }
+            if (IPORT != 1 && IPORT != 2) goto L930;
+            double R2FAC = std::pow(FLOAT_arr(39 + IPORT), 1.0/3.0) / R0MASS;
+            int IB = NAMLOC("BETACOUL");
+            if (IB == 0) goto L940;
+            if (VI != 0.0 && (RI == UNDEF || AI == UNDEF)) goto L950;
+            if (VSI != 0.0 && (RSI == UNDEF || ASI == UNDEF)) goto L945;
+
+            char wname[9] = "    SHAP";
+            std::memcpy(wname, ID, 4);
+            IWRK = NALLOC(wname, NUMPTS + 10);
+            LWRK = LOCPTRS.Z[IWRK];
+            ALLOC(LWRK)     = R2FAC;
+            ALLOC(LWRK + 1) = ALLOC(LOCPTRS.Z[IB]);
+            goto L300;
+        }
+
+        // IREQUE = 2 or 3 — use cached MYINTS
+        IWRK = MYINTS[0];
+        LWRK = LOCPTRS.Z[IWRK];
+        if (VI  != 0.0 && (AI  <= 0.0 || RI  <= 0.0)) goto L960;
+        if (VSI != 0.0 && (ASI <= 0.0 || RSI <= 0.0)) goto L960;
+        double RC2  = RC * ALLOC(LWRK);
+        BETA = ALLOC(LWRK + 1);
+        RD   = ZP * ZT * ALPHA * HBARC / E;
+        WP   = 3.0 * std::pow(ZP * ZT * ALPHA * BETA, 2.0) * AM * G2_val
+             * std::pow(RC2, 4.0) / (50.0 * PI * AK);
+        WPP  = 3.0 * WP / 8.0;
+        ALLOC(LWRK + 2) = ETA;
+        ALLOC(LWRK + 3) = WPP;
+        ALLOC(LWRK + 8) = AK;
+        double ETASQ = ETA * ETA;
+
+        double DLCSQ = AK * RC * (AK * RC - 2.0 * ETA);
+        if (DLCSQ < 0.25) DLCSQ = 0.25;
+        DLC = DSQRT(DLCSQ);
+        AC = ATERM_fn(DLC, ETA, ETASQ, AK);
+        BC = BTERM_fn(DLC, ETA, ETASQ, AK);
+        CC = CTERM_fn(DLC, ETASQ);
+        ALLOC(LWRK + 4) = AC;
+        ALLOC(LWRK + 5) = BC;
+        ALLOC(LWRK + 6) = CC;
+        FATRC = ((CC / RC + BC) / RC + AC) / std::pow(RC, 3.0);
+    }
+
+L300:
+    if (IREQUE == 1) {
+        MYINTS[0] = IWRK;
+        MYINTS[1] = 0;
+        IRETUR = +1;
+        if (NUMOUT != 0) goto L900;
+        return;
+    }
+    if (IREQUE == 2) goto L500;
+    if (IREQUE == 3) goto L600;
+    return;
+
+L500:
+    if (VI != 0.0) {
+        double R0 = RI / R0MASS;
+        std::printf(" W.S. WELL:        %14.3g     %7.4f     %7.4f       %7.4f      %7.3f\n",
+                    VI, RI, AI, R0, POWER);
+    }
+    if (VSI != 0.0) {
+        double R0 = RSI / R0MASS;
+        std::printf(" SURFACE ABSORPTION:%14.3g     %7.4f     %7.4f       %7.4f\n",
+                    VSI, RSI, ASI, R0);
+    }
+    {
+        double WPRC5 = WP / std::pow(RC, 5.0);
+        std::printf(" %.8s 2+ BKGP TELP WITH BETACOULOMB =%7.4f     G2 =%12.5g"
+                    "     RC =%7.4f     RD =%7.4f     WP/RC**5 =%12.5g MEV\n",
+                    WORDS[IPORT], BETA, G2_val, RC, RD, WPRC5);
+        double FFC = FATRC * std::pow(RC, 5.0);
+        double AAC = AC * RC * RC;
+        double BBC = BC * RC;
+        std::printf(" SIMPLE L-HAT CRITICAL =%8.1f     F(LCRIT, RC)*RC**5 =%13.5g"
+                    "     TERMS =%14.5g%14.5g%14.5g\n",
+                    DLC, FFC, AAC, BBC, CC);
+    }
+    goto L900;
+
+L600:
+    {
+        int LL = LWRK + 10;
+        int N1 = 0, N2 = 0;
+        WOODSX(NUMPTS, RSTART, STEPSZ, ALLOC_base(LL), N1, N2, 1, VI, RI, AI, POWER);
+        for (int I = 1; I <= NUMPTS; I++) ARRAY1[I] = ALLOC(LL - 1 + I);
+
+        if (VSI != 0.0) {
+            WOODSX(NUMPTS, RSTART, STEPSZ, ALLOC_base(LL), N1, N2, 3, VSI, RSI, ASI, 1.0);
+            for (int I = N1; I <= N2; I++) ARRAY1[I] = ARRAY1[I] + ALLOC(LL - 1 + I);
+        }
+
+        N1 = (int)((RC - RSTART) / STEPSZ + 1.5);
+        N1 = MIN0(N1, NUMPTS);
+        ALLOC(LWRK + 7) = (double)N1;
+        ALLOC(LWRK + 9) = RC;
+        for (int I = 1; I <= N1; I++) ARRAY1[I] = ARRAY1[I] - WPP * FATRC;
+
+        N1 = N1 + 1;
+        if (N1 > NUMPTS) return;
+        double R = RSTART + (N1 - 1) * STEPSZ;
+        for (int I = N1; I <= NUMPTS; I++) {
+            double RINV = 1.0 / R;
+            ARRAY1[I] = ARRAY1[I]
+                - WPP * ((CC * RINV + BC) * RINV + AC) * RINV * RINV * RINV;
+            R += STEPSZ;
+        }
+    }
+    return;
+
+L700:
+    {
+        LWRK = LOCPTRS.Z[MYINTS[0]];
+        ETA = ALLOC(LWRK + 2);
+        WPP = ALLOC(LWRK + 3) * ARRAY2[1];   // ARRAY2(1) Fortran = ARRAY2[1] (caller pre-shifts)
+        AC  = ALLOC(LWRK + 4);
+        BC  = ALLOC(LWRK + 5);
+        CC  = ALLOC(LWRK + 6);
+        int N1 = (int)ALLOC(LWRK + 7);
+        AK  = ALLOC(LWRK + 8);
+        RC  = ALLOC(LWRK + 9);
+        double ETASQ = ETA * ETA;
+        double DL = L + 0.5;
+        double A_v = ATERM_fn(DL, ETA, ETASQ, AK);
+        double B_v = BTERM_fn(DL, ETA, ETASQ, AK);
+        double C_v = CTERM_fn(DL, ETASQ);
+        FATRC = (((C_v - CC) / RC + (B_v - BC)) / RC + (A_v - AC)) / std::pow(RC, 3.0);
+        for (int I = 1; I <= N1; I++) ARRAY1[I] = ARRAY1[I] - WPP * FATRC;
+        double R = RSTART + N1 * STEPSZ;
+        N1 = N1 + 1;
+        if (N1 > NUMPTS) return;
+        for (int I = N1; I <= NUMPTS; I++) {
+            double RINV = 1.0 / R;
+            ARRAY1[I] = ARRAY1[I]
+                - WPP * (((C_v - CC) * RINV + (B_v - BC)) * RINV + (A_v - AC)) * RINV * RINV * RINV;
+            R += STEPSZ;
+        }
+    }
+    return;
+
+L900:
     NUMOUT = 1;
+    return;
+
+L930:
+    std::printf("0**** IPARAM5 =%3d MUST BE 1 OR 2 TO INDICATE PROJECTILE OR TARGET EXCITATION FOR BKGPTELP.\n", IPORT);
+    IRETUR = -1; goto L900;
+L940:
+    std::printf("0**** BETACOULOMB MUST BE DEFINED FOR BKGPTELP.\n");
+    IRETUR = -1; goto L900;
+L945:
+    std::printf("0**** RSI (OR RSI0) AND ASI MUST BE DEFINED.\n");
+    IRETUR = -1; goto L900;
+L950:
+    std::printf("0**** RI (OR RI0) AND AI MUST BE DEFINED.\n");
+    IRETUR = -1; goto L900;
+L960:
+    IRETUR = -1;
+    return;
 }
+
+// ============================================================================
+// SUBROUTINE DEFORMEd — Deformed Woods-Saxon optical potential
+// Translated from linkulesfitters.f L504-L729.
+// ============================================================================
 
 void DEFORMEd(char8 ALIAS, int* MYINTS, int IPOTYP, int IREQUE, int& IRETUR,
               int IUNIT, int& NUMOUT,
@@ -1242,10 +1487,215 @@ void DEFORMEd(char8 ALIAS, int* MYINTS, int IPOTYP, int IREQUE, int& IRETUR,
               double* ARRAY1, double* ARRAY2,
               char* ID, int* IPARAM)
 {
-    printf("\n**** DEFORMEd LINKULE NOT YET FULLY OPERATIONAL (needs DEFWOO from Phase 8).\n");
-    IRETUR = -1;
+    static const char DEFNAM[3][9] = { "PROJECTI", "TARGET  ", "SUMMED  " };
+
+    double UNDEF  = INTRNL.UNDEF;
+    int    NOTDEF = NOTDEF_INT;
+    double PI     = CNSTNT.PI;
+    double BIGLOG = CNSTNT.BIGLOG;
+
+    NUMOUT = 0;
+    IRETUR = 0;
+
+    // Local arrays: BETAS(2,20), RBETAS(2,20), IBETA(2), LDEFMX(2), RDEFS(2), LXS(2)
+    // (Fortran 1-based, dim2 indexed by I=1..2, dim1 by LX=LXMIN..LXMAX up to 20)
+    double BETAS[3][21];   // BETAS[I][LX], I=1..2, LX=1..20
+    double RBETAS[3][21];
+    int    IBETA[3]   = {0,0,0};
+    int    LDEFMX[3]  = {0,0,0};
+    double RDEFS[3]   = {0,0,0};
+    int    LXS[3]     = {0,0,0};
+
+    double V, A, R, POWER;
+    if (IPOTYP == 13) {
+        // Deformed surface potential (derivative of WS)
+        V = FLOAT_arr(71);
+        R = FLOAT_arr(69);
+        A = FLOAT_arr(68);
+        POWER = 1.0;
+    } else {
+        V = TEMPVS_arr()[IPOTYP - 1];          // TEMPVS(IPOTYP)
+        A = TEMPVS_arr()[3 + IPOTYP];          // TEMPVS(4+IPOTYP)
+        R = FLOAT_common.R;                    // FLOAT(43)
+        if (IPOTYP == 2) R = FLOAT_common.RI;  // FLOAT(47)
+        if (IPOTYP == 1) POWER = FLOAT_common.POWRL;  // FLOAT(102)
+        else             POWER = FLOAT_common.POWIM;  // FLOAT(103)
+    }
+
+    double VV = 0.0;
+    int    LXOUT = 0;
+    int    LXMIN = 2;
+    int    NCOSIN = 10;
+    int    IPORT = 0;
+
+    if (V != 0.0) {
+        if (R == UNDEF || A == UNDEF || V == UNDEF) goto L950;
+        if (R <= 0.0 || A <= 0.0) goto L960;
+
+        LXOUT = INTGER.LX;                     // INTGER(5)
+        if (LXOUT == -1 || LXOUT == NOTDEF) LXOUT = 0;
+        LXS[1] = 0;
+        LXS[2] = 0;
+        LXMIN = IPARAM[3];                     // Fortran IPARAM(4) = IPARM4 (caller passes &IPARM1)
+        if (LXMIN == NOTDEF) LXMIN = 2;
+        IBETA[1] = MYINTS[0];                  // MYINTS(1) — C++ 0-based MYINTS[0]
+        IBETA[2] = MYINTS[1];                  // MYINTS(2)
+
+        if (IREQUE == 1) {
+            // Find BETAP, BETAT
+            IBETA[1] = NAMLOC("BETAP   ");
+            IBETA[2] = NAMLOC("BETAT   ");
+            if (IBETA[1] + IBETA[2] == 0) goto L970;
+        }
+
+        // Get the betas and compute R*beta
+        double R0MASS = INTRNL.R0MASS;
+        for (int I = 1; I <= 2; I++) {
+            LDEFMX[I] = 0;
+            if (IBETA[I] == 0) continue;
+            LDEFMX[I] = LXMIN + LENGTH.LENG[IBETA[I]] - 1;
+            int LXMAX_loc = LDEFMX[I];
+            double RDEF = R * std::pow(FLOAT_arr(39 + I), 1.0/3.0) / R0MASS;
+            RDEFS[I] = RDEF;
+            int LBETA = LOCPTRS.Z[IBETA[I]];
+            for (int LX = LXMIN; LX <= LXMAX_loc; LX++) {
+                double BETA = ALLOC(LBETA);
+                BETAS[I][LX]  = BETA;
+                RBETAS[I][LX] = RDEF * BETA;
+                LBETA++;
+            }
+        }
+
+        NCOSIN = INTGER.NCOSIN;                // INTGER(11)
+        if (NCOSIN == NOTDEF) NCOSIN = 10;
+        if (NCOSIN > 100)     NCOSIN = 10;
+        VV = V;
+        IPORT = 0;
+        if (INTGER.LX == -1 || INTGER.LX == NOTDEF) goto L100;
+
+        // Determin what projection is needed for excitation
+        if (IREQUE != 3) goto L100;
+        IPORT = (INTGER_arr_f(58) % 100) - 2;  // JBLOCK(1) — actually JB(1); let me use JBLOCK.J directly
+        // (JBLOCK(1) is J — see ptolemy_commons.h JblockCommon: COMMON /JBLOCK/ J, JS(5), ...)
+        // Re-do using direct JBLOCK access:
+        IPORT = ((int)JBLOCK.J % 100) - 2;
+        if (IPORT >= 3) goto L80;
+        if (IPORT < 1 || IBETA[IPORT] == 0) goto L965;
+        LXS[IPORT] = LXOUT;
+        VV = -V / RDEFS[IPORT];
+        goto L100;
+
+    L80:
+        LXS[1] = ((int)JBLOCK.J / 100)   % 100;
+        LXS[2] = ((int)JBLOCK.J / 10000) % 100;
+        VV = -V / (RDEFS[1] * RDEFS[2]);
+    }
+
+L100:
+    if (IREQUE == 1) {
+        MYINTS[0] = IBETA[1];
+        MYINTS[1] = IBETA[2];
+        return;
+    }
+    if (IREQUE == 2) goto L500;
+    if (IREQUE == 3) goto L600;
+    return;
+
+L500:
+    if (V == 0.0) {
+        std::printf(" THE POTENTIAL IS IDENTICALLY ZERO.\n");
+        goto L900;
+    }
+    if (IPOTYP != 13)
+        std::printf(" THE POTENTIAL IS A DEFORMED WOODS-SAXON:\n");
+    else
+        std::printf(" THE POTENTIAL IS A DEFORMED DERIVATIVE OF A WOODS-SAXON:\n");
+    std::printf(" V =%7.2f   R =%7.4f   A =%7.4f     POWER =%8.4f\n", V, R, A, POWER);
+    for (int I = 1; I <= 2; I++) {
+        if (IBETA[I] == 0) continue;
+        int LXMAX_loc = LDEFMX[I];
+        std::printf("0THE %.8s RADIUS OF%8.4f FM. IS BEING DEFORMED.\n"
+                    " LX   BETA   DEFORMATION LENGTH\n", DEFNAM[I-1], RDEFS[I]);
+        for (int LX = LXMIN; LX <= LXMAX_loc; LX++) {
+            std::printf("%3d%8.4f%15.4f\n", LX, BETAS[I][LX], RBETAS[I][LX]);
+        }
+    }
+    std::printf("%5d-POINT GAUSS INTEGRATION IS BEING USED.\n", NCOSIN);
+    goto L900;
+
+L600:
+    {
+        int ITYPE = 1;
+        if (IPOTYP == 13) ITYPE = 3;
+        int N1, N2;
+        // DEFWOO's internal macro `RBETAS(i,lx) RBETAS_flat[((lx)-1)*2 + (i)]`
+        // uses 1-based access — RBETAS_flat[1] is RBETAS(1,1). Same for LDEFMX/LXS[I=1..2].
+        // expects 1-based access: RBETAS_flat[1] = RBETAS(1,1), [2] = (2,1), [3] = (1,2), etc.
+        // Allocate one extra slot at index 0 for the padding so the math lines up.
+        double RBETAS_flat[2 * 20 + 1] = {0};
+        for (int LX = 1; LX <= 20; LX++) {
+            RBETAS_flat[(LX-1)*2 + 1] = RBETAS[1][LX];   // RBETAS(1, LX) — projectile
+            RBETAS_flat[(LX-1)*2 + 2] = RBETAS[2][LX];   // RBETAS(2, LX) — target
+        }
+        // LDEFMX_arr and LXS_arr — DEFWOO indexes LDEFMX[I] for I=1..2 so use 1-based with padding
+        int LDEFMX_arr[3] = { 0, LDEFMX[1], LDEFMX[2] };
+        int LXS_arr[3]    = { 0, LXS[1],    LXS[2]    };
+        DEFWOO(NUMPTS, RSTART, STEPSZ, ARRAY1, N1, N2,
+               ITYPE, VV, R, A, POWER, IPORT, LXMIN, LDEFMX_arr,
+               RBETAS_flat, LXS_arr, NCOSIN);
+
+        if (VV == 0.0) goto L900;
+        VV = VV / V;
+        if (IPORT == 0) {
+            std::printf(" DEFORMED OPTICAL POTENTIAL WEIGHTED BY%15.5g"
+                        " WAS COMPUTED WITH LXP AND LXT MAXIMUM =%3d%3d\n",
+                        VV, LDEFMX[1], LDEFMX[2]);
+        } else if (IPORT < 3) {
+            std::printf(" THE LAMBDA =%2d PROJECTION OF THE DEFORMED POTENTIAL WEIGHTED BY"
+                        "%15.5g WAS COMPUTED WITH A DEFORMED %.8s RADIUS.\n",
+                        LXOUT, VV, DEFNAM[IPORT-1]);
+        } else {
+            std::printf(" THE MUTUAL DEFORMED POTENTIAL WEIGHTED BY%15.5g"
+                        " WAS COMPUTED FOR LXP, LXT =%3d%3d\n",
+                        VV, LXS[1], LXS[2]);
+        }
+        // Indicate that no derivative is needed in the form factor
+        if (IPORT > 0) SWITCH.KFRMTP = 1;
+    }
+    // fallthrough to L900
+
+L900:
     NUMOUT = 1;
+    return;
+
+L950:
+    std::printf("0**** R, V, AND A MUST BE DEFINED.\n");
+    IRETUR = -1;
+    goto L900;
+
+L960:
+    std::printf("0*** R OR A IS INVALID:%20.10g%20.10g\n", R, A);
+    IRETUR = -1;
+    goto L900;
+
+L965:
+    std::printf("0*** WRONG NUCLEUS DEFORMED:%15d%8d%8d%8d%8d%8d%8d\n",
+                (int)JBLOCK.J, IPORT, IREQUE, LXS[1], LXS[2], IBETA[1], IBETA[2]);
+    IRETUR = -1;
+    goto L900;
+
+L970:
+    std::printf("0*** BETAP OR BETAT MUST BE DEFINED\n");
+    IRETUR = -1;
+    goto L900;
 }
+
+// ============================================================================
+// SUBROUTINE LTSTELp — Love-Terasawa-Satchler 2+ TELP linkule
+// Translated from linkulesfitters.f L1442-L1696.
+// Like BKGPTELP but with the LTS TELP formula; NO L-dependence (IRETUR=0).
+// NOT yet exercised by any regression test (untested translation).
+// ============================================================================
 
 void LTSTELp(char8 ALIAS, int* MYINTS, int IPOTYP, int IREQUE, int& IRETUR,
              int IUNIT, int& NUMOUT,
@@ -1253,10 +1703,173 @@ void LTSTELp(char8 ALIAS, int* MYINTS, int IPOTYP, int IREQUE, int& IRETUR,
              double* ARRAY1, double* ARRAY2,
              char* ID, int* IPARAM)
 {
-    printf("\n**** LTSTELp LINKULE NOT YET FULLY OPERATIONAL (needs WOODSX from Phase 8).\n");
-    IRETUR = -1;
+    static const char WORDS[3][9] = { "        ", "PROJCTIL", "  TARGET" };
+
+    NUMOUT = 0;
+    IRETUR = 0;
+
+    double UNDEF  = INTRNL.UNDEF;
+    int    NOTDEF = NOTDEF_INT;
+
+    double VI    = TEMPVS_arr()[1];
+    double AI    = TEMPVS_arr()[5];
+    double RI    = FLOAT_common.RI;
+    double POWER = FLOAT_common.POWIM;
+    double VSI   = FLOAT_common.VSI;
+    double RSI   = FLOAT_common.RSI;
+    double ASI   = FLOAT_common.ASI;
+    double G2_val = PARAMS_at(20);
+    if (G2_val == UNDEF) G2_val = 1.0;
+    int ICHANW_local = INTRNL.ICHANB;
+    double AK   = AKS()[ICHANW_local];
+    double RC   = FLOAT_common.RC;
+    int    ZP   = INTGER.IZP;
+    int    ZT   = INTGER.IZT;
+    double ALPHA = 1.0 / CNSTNT.AFINE;
+    double PI    = CNSTNT.PI;
+    double HBARC = CNSTNT.HBARC;
+    double E     = FLOAT_common.E;
+    double AM    = FLOAT_common.AM;
+    double R0MASS = INTRNL.R0MASS;
+
+    int IWRK = 0, LWRK = 0;
+    int IPORT = 0;
+    double WP = 0.0, RC2 = 0.0, BETA = 0.0, RD = 0.0;
+
+    if (IREQUE == 1) {
+        IPORT = IPARAM[4];
+        if (IPORT == NOTDEF) {
+            IPORT = 0;
+            if ((int)JBLOCK.JS[2] != (int)JBLOCK.JS[3]) IPORT = 1;
+            if ((int)JBLOCK.JS[4] != (int)JBLOCK.JS[5]) IPORT = 2;
+        }
+        if (IPORT != 1 && IPORT != 2) goto LL930;
+        double R2FAC = std::pow(FLOAT_arr(39 + IPORT), 1.0/3.0) / R0MASS;
+        int IB = NAMLOC("BETACOUL");
+        if (IB == 0) goto LL940;
+        if (VI != 0.0 && (RI == UNDEF || AI == UNDEF)) goto LL950;
+        if (VSI != 0.0 && (RSI == UNDEF || ASI == UNDEF)) goto LL945;
+        char wname[9] = "    SHAP";
+        std::memcpy(wname, ID, 4);
+        IWRK = NALLOC(wname, NUMPTS + 10);
+        LWRK = LOCPTRS.Z[IWRK];
+        ALLOC(LWRK)     = R2FAC;
+        ALLOC(LWRK + 1) = ALLOC(LOCPTRS.Z[IB]);
+        goto LL300;
+    }
+
+    IWRK = MYINTS[0];
+    LWRK = LOCPTRS.Z[IWRK];
+    if (VI  != 0.0 && (AI  <= 0.0 || RI  <= 0.0)) goto LL960;
+    if (VSI != 0.0 && (ASI <= 0.0 || RSI <= 0.0)) goto LL960;
+    RC2  = RC * ALLOC(LWRK);
+    BETA = ALLOC(LWRK + 1);
+    RD   = ZP * ZT * ALPHA * HBARC / E;
+    WP   = 3.0 * std::pow(ZP * ZT * ALPHA * BETA, 2.0) * AM * G2_val
+         * std::pow(RC2, 4.0) / (50.0 * PI * AK);
+
+LL300:
+    if (IREQUE == 1) {
+        MYINTS[0] = IWRK;
+        MYINTS[1] = 0;
+        IRETUR = 0;
+        if (NUMOUT != 0) goto LL900;
+        return;
+    }
+    if (IREQUE == 2) goto LL500;
+    if (IREQUE == 3) goto LL600;
+    return;
+
+LL500:
+    if (VI != 0.0) {
+        double R0 = RI / R0MASS;
+        std::printf(" W.S. WELL:        %14.3g     %7.4f     %7.4f       %7.4f      %7.3f\n",
+                    VI, RI, AI, R0, POWER);
+    }
+    if (VSI != 0.0) {
+        double R0 = RSI / R0MASS;
+        std::printf(" SURFACE ABSORPTION:%14.3g     %7.4f     %7.4f       %7.4f\n",
+                    VSI, RSI, ASI, R0);
+    }
+    {
+        double WPRC5 = WP / std::pow(RC, 5.0);
+        std::printf(" %.8s 2+ LTS TELP WITH BETACOULOMB =%7.4f     G2 =%12.5g"
+                    "     RC =%7.4f     RD =%7.4f     WP/RC**5 =%12.5g MEV\n",
+                    WORDS[IPORT], BETA, G2_val, RC, RD, WPRC5);
+    }
+    goto LL900;
+
+LL600:
+    {
+        int LL = LWRK + 10;
+        int N1 = 0, N2 = 0;
+        WOODSX(NUMPTS, RSTART, STEPSZ, ALLOC_base(LL), N1, N2, 1, VI, RI, AI, POWER);
+        for (int I = 1; I <= NUMPTS; I++) ARRAY1[I] = ALLOC(LL - 1 + I);
+
+        if (VSI != 0.0) {
+            WOODSX(NUMPTS, RSTART, STEPSZ, ALLOC_base(LL), N1, N2, 3, VSI, RSI, ASI, 1.0);
+            for (int I = N1; I <= N2; I++) ARRAY1[I] = ARRAY1[I] + ALLOC(LL - 1 + I);
+        }
+
+        // LTS TELP: Coulomb braking term
+        double X = 1.0 / DSQRT(0.10);
+        N1 = (int)((RD - RSTART) / (0.90 * STEPSZ) + 1.5);
+        N1 = MIN0(N1, NUMPTS);
+        for (int I = 1; I <= N1; I++) ALLOC(LL - 1 + I) = X;
+        double R = N1 * STEPSZ + RSTART;
+        for (int I = N1; I <= NUMPTS; I++) {
+            ALLOC(LL - 1 + I) = 1.0 / DSQRT(1.0 - RD / R);
+            R += STEPSZ;
+        }
+
+        // LTS TELP term (two regions)
+        N1 = (int)((RC - RSTART) / STEPSZ + 1.5);
+        N1 = MIN0(N1, NUMPTS);
+        R = RSTART;
+        for (int I = 1; I <= N1; I++) {
+            ARRAY1[I] = ARRAY1[I]
+                - (2.0 * WP / (3.0 * std::pow(RC, 9.0))) * ALLOC(LL - 1 + I) * std::pow(R, 4.0);
+            R += STEPSZ;
+        }
+
+        N1 = N1 + 1;
+        if (N1 > NUMPTS) return;
+        for (int I = N1; I <= NUMPTS; I++) {
+            double RCoR = RC / R;
+            ARRAY1[I] = ARRAY1[I]
+                - WP * ALLOC(LL - 1 + I) * (1.0 - RCoR*RCoR * (2.0/7.0 + RCoR*RCoR * (1.0/21.0)))
+                  / std::pow(R, 5.0);
+            R += STEPSZ;
+        }
+    }
+    return;
+
+LL900:
     NUMOUT = 1;
+    return;
+
+LL930:
+    std::printf("0**** IPARAM5 =%3d MUST BE 1 OR 2 TO INDICATE PROJECTILE OR TARGET EXCITATION FOR LTSTELP.\n", IPORT);
+    IRETUR = -1; goto LL900;
+LL940:
+    std::printf("0**** BETACOULOMB MUST BE DEFINED FOR LTSTELP.\n");
+    IRETUR = -1; goto LL900;
+LL945:
+    std::printf("0**** RSI (OR RSI0) AND ASI MUST BE DEFINED.\n");
+    IRETUR = -1; goto LL900;
+LL950:
+    std::printf("0**** RI (OR RI0) AND AI MUST BE DEFINED.\n");
+    IRETUR = -1; goto LL900;
+LL960:
+    IRETUR = -1;
+    return;
 }
+
+// ============================================================================
+// SUBROUTINE TWOSHApe — Use two fixed shapes scaled by depth parameters
+// Translated from linkulesfitters.f L3438-L3691.
+// Potential = CONS * SHAPE1 + CONS2 * SHAPE2 where SHAPE1/2 are stored arrays.
+// ============================================================================
 
 void TWOSHApe(char8 ALIAS, int* MYINTS, int IPOTYP, int IREQUE, int& IRETUR,
               int IUNIT, int& NUMOUT,
@@ -1264,7 +1877,198 @@ void TWOSHApe(char8 ALIAS, int* MYINTS, int IPOTYP, int IREQUE, int& IRETUR,
               double* ARRAY1, double* ARRAY2,
               char* ID)
 {
-    printf("\n**** TWOSHApe LINKULE NOT YET FULLY OPERATIONAL.\n");
-    IRETUR = -1;
+    static const char NAMES[6][9]  = { "", "REALSHAP", "IMAGSHAP", "REALSOSH", "IMAGSOSH", "SHAPE   " };
+    static const char NAMES2[6][9] = { "", "REALADD ", "IMAGADD ", "REALSOAD", "IMAGSOAD", "SHAPEADD" };
+    static const char SCALNM[6][9] = { "", "REALSCAL", "IMAGSCAL", "REALSOSC", "IMAGSOSC", "SHAPESCA" };
+
+    double UNDEF = INTRNL.UNDEF;
+    NUMOUT = 0;
+    IRETUR = 0;
+
+    double CONS  = TEMPVS_arr()[IPOTYP - 1];   // Fortran TEMPVS(IPOTYP)
+    double CONS2 = PARAMS_at(IPOTYP);          // Fortran PARAM(IPOTYP)
+    if (CONS == UNDEF || CONS2 == UNDEF) {
+        std::printf("0**** THE WELL DEPTH PARAMETER (V, VI, VSO, VSOI) AND CORRESPONDINGLY"
+                    " PARAM1 - PARAM4 MUST BE DEFINED FOR THE TWOSHAPE LINKULE.\n");
+        IRETUR = -1;
+        goto L900;
+    }
+    CONS  = -CONS;
+    CONS2 = -CONS2;
+
+    if (IREQUE == 1) goto L100;
+    if (IREQUE == 2) goto L500;
+    if (IREQUE == 3) goto L600;
+    return;
+
+L100:
+    {
+        int II = IPOTYP;
+        int I  = NAMLOC(NAMES[II]);
+        if (I == 0) {
+            II = 5;
+            I = NAMLOC(NAMES[II]);
+            if (I == 0) {
+                std::printf("0**** AN OBJECT WITH THE NAME %.8s OR TWOSHAPE MUST BE DEFINED"
+                            " TO USE THE SHAPE LINKULE.\n", NAMES[IPOTYP]);
+                IRETUR = -1;
+                goto L900;
+            }
+        }
+        int I2 = NAMLOC(NAMES2[II]);
+        if (I2 == 0) {
+            std::printf("0**** AN OBJECT WITH THE NAME %.8s MUST BE DEFINED"
+                        " FOR THE TWOSHAPE LINKULE.\n", NAMES2[II]);
+            IRETUR = -1;
+            goto L900;
+        }
+        int NIN = LENGTH.LENG[I];
+        if (NIN != LENGTH.LENG[I2]) {
+            std::printf("0**** %.8s AND %.8s MUST BE DEFINED ON THE SAME GRID.\n",
+                        NAMES[II], NAMES2[II]);
+            IRETUR = -1;
+            goto L900;
+        }
+
+        int ISCAL = NAMLOC(SCALNM[II]);
+        double RMAX = RSTART + (NUMPTS - 1) * STEPSZ;
+        int LISCAL = (ISCAL == 0) ? 0 : LENGTH.LENG[ISCAL];
+
+        bool need_interp = false;
+        bool skip_to_400 = false;
+        bool RSW = false;
+        double R1 = 0, R2 = 0;
+
+        if (ISCAL == 0) {
+            // No scale array — just check point count
+            if (NUMPTS != NIN) {
+                std::printf("0**** ASYMPTOPIA AND STEPSIZE =%15.5g%15.5g AND REQUIRE%6d POINTS.\n"
+                            "      HOWEVER, %.8s HAS%6d POINTS AND %.8s IS NOT DEFINED.\n",
+                            RMAX, STEPSZ, NUMPTS, NAMES[II], NIN, SCALNM[II]);
+                IRETUR = -1;
+                goto L900;
+            }
+            std::printf("0%.8s AND %.8s ARE BEING ASSUMED TO BE DEFINED FOR%15.5g =< R =<%15.5g WITH STEPSIZE =%15.5g\n",
+                        NAMES[II], NAMES2[II], RSTART, RMAX, STEPSZ);
+            NUMOUT = 1;
+            skip_to_400 = true;
+        } else if (LISCAL == 2) {
+            // Scaling array = (start, stop)
+            R1 = ALLOC(LOCPTRS.Z[ISCAL]);
+            R2 = ALLOC(LOCPTRS.Z[ISCAL] + 1);
+            RSW = false;
+            if (R1 == RSTART && NIN == NUMPTS && DABS(R2 - RMAX) / STEPSZ < 1.0e-5)
+                skip_to_400 = true;
+            else
+                need_interp = true;
+        } else if (LISCAL == NIN) {
+            R1 = ALLOC(LOCPTRS.Z[ISCAL]);
+            R2 = ALLOC(LOCPTRS.Z[ISCAL] + NIN - 1);
+            RSW = true;
+            need_interp = true;
+        } else {
+            std::printf("0**** SCALLING ARRAY %.8s SHOULD HAVE 2 OR%4d ELEMENTS, BUT IT HAS%6d ELEMENTS.\n",
+                        SCALNM[II], NIN, LISCAL);
+            IRETUR = -1;
+            goto L900;
+        }
+
+        if (need_interp && !skip_to_400) {
+            // Must rescale using AITKEN
+            int IOLD  = I;
+            int IOLD2 = I2;
+            int ISIZE = NIN + NUMPTS;
+            char wname[9]  = "    SHAP";
+            char wname2[9] = "    SHP2";
+            char wname3[9] = "    WORK";
+            std::memcpy(wname,  ID, 4);
+            std::memcpy(wname2, ID, 4);
+            std::memcpy(wname3, ID, 4);
+            I  = NALLOC(wname,  NUMPTS);
+            I2 = NALLOC(wname2, NUMPTS);
+            int IWORK = NALLOC(wname3, ISIZE);
+
+            int LXIN   = LOCPTRS.Z[IWORK] - 1;
+            int LXOUT  = LXIN + NIN;
+            int LYIN   = LOCPTRS.Z[IOLD]  - 1;
+            int LYOUT  = LOCPTRS.Z[I]     - 1;
+            int LYIN2  = LOCPTRS.Z[IOLD2] - 1;
+            int LYOUT2 = LOCPTRS.Z[I2]    - 1;
+
+            if (RSW) {
+                LXIN = LOCPTRS.Z[ISCAL] - 1;
+            } else {
+                // Setup input X's evenly between R1 and R2
+                double R = R1;
+                double STEPIN = (R2 - R1) / (NIN - 1);
+                for (int N = 1; N <= NIN; N++) {
+                    ALLOC(LXIN + N) = R;
+                    R += STEPIN;
+                }
+            }
+
+            // Setup output X's, no extrapolation (use F(1) for R<R1, 0 for R>R2)
+            double R = RSTART;
+            int NSTRT = 1;
+            int NLAST = 1;
+            double VAL0  = ALLOC(LYIN  + 1);
+            double VAL02 = ALLOC(LYIN2 + 1);
+            for (int N = 1; N <= NUMPTS; N++) {
+                if (R < R1) {
+                    ALLOC(LYOUT  + N) = VAL0;
+                    ALLOC(LYOUT2 + N) = VAL02;
+                    NSTRT = N + 1;
+                } else if (R > R2) {
+                    ALLOC(LYOUT  + N) = 0.0;
+                    ALLOC(LYOUT2 + N) = 0.0;
+                } else {
+                    ALLOC(LXOUT + N) = R;
+                    NLAST = N;
+                }
+                R += STEPSZ;
+            }
+            int NOUT = NLAST + 1 - NSTRT;
+
+            double WORK[20];
+            int NFAIL; double WORST;
+            AITKEN(5, 0.0, 0.0, NIN,
+                   ALLOC_base(LXIN + 1), ALLOC_base(LYIN + 1),
+                   NOUT, ALLOC_base(LXOUT + NSTRT), ALLOC_base(LYOUT + NSTRT),
+                   NFAIL, WORST, WORK);
+            AITKEN(5, 0.0, 0.0, NIN,
+                   ALLOC_base(LXIN + 1), ALLOC_base(LYIN2 + 1),
+                   NOUT, ALLOC_base(LXOUT + NSTRT), ALLOC_base(LYOUT2 + NSTRT),
+                   NFAIL, WORST, WORK);
+
+            // Free work area
+            LOCPTRS.Z[IWORK] = -LOCPTRS.Z[IWORK];
+        }
+
+        MYINTS[0] = 256 * I + I2;
+        MYINTS[1] = II;
+        if (NUMOUT != 0) goto L900;
+        return;
+    }
+
+L500:
+    std::printf(" THE POTENTIAL IS%15.5g TIMES THE SHAPE IN %.8s\n"
+                "               PLUS%15.5g TIMES THE SHAPE IN %.8s\n",
+                CONS, NAMES[MYINTS[1]], CONS2, NAMES2[MYINTS[1]]);
+    goto L900;
+
+L600:
+    {
+        int I  = MYINTS[0] / 256;
+        int I2 = MYINTS[0] - 256 * I;
+        int LL  = LOCPTRS.Z[I]  - 1;
+        int LL2 = LOCPTRS.Z[I2] - 1;
+        for (int i = 1; i <= NUMPTS; i++) {
+            ARRAY1[i] = CONS * ALLOC(LL + i) + CONS2 * ALLOC(LL2 + i);
+        }
+    }
+    return;
+
+L900:
     NUMOUT = 1;
+    return;
 }

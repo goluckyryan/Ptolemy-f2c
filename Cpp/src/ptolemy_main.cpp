@@ -75,12 +75,11 @@ label_100:
     goto label_90;
 
     // ---------------------------------------------------------------
-    // IGOTO = 2: after FIT or FITELASTIC
+    // IGOTO = 2: after FIT or FITELASTIC — fitting feature removed
     // ---------------------------------------------------------------
 label_200:
-    FITEL(IPRM1);
-    if (IPRM1 == 0) goto label_90;
-    FITEL2(IPRM1);
+    printf("\n**** FIT KEYWORD NOT AVAILABLE IN this VERSION (fitting feature removed)\n");
+    IPRM1 = 0;
     goto label_90;
 
     // ---------------------------------------------------------------

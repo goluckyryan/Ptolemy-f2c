@@ -235,16 +235,7 @@ void REID(char8 ALIAS, real4* SAVINT, int IPOTYP, int IREQUE, int& IRETUR,
           int (*NALLOC_fn)(const char*, int), int (*NAMLOC_fn)(const char*),
           int* IPARAM);
 
-// --- linkulesfitters.f — fitter routines ---
-void CMTRIX(int N, int M, double* RJ, double* F, double* RJTJ, double* RJTF);
-double FCUBIC(double F0, double G0, double F1, double G1, double XLAM);
-void GENINV(int M, int N, double* A, int IA, double* W);
-void MINMON(int ITCNT, int NFCALL, int NJCALL, int NPARAM, int NPTS,
-            double* PARAM, double* F, double& FS);
-void MOVE(double* X0, double* X, int N);
-void MTMM(double* A1, double* A2, double* RESULT, int N1, int N2, int N3);
-void MATMPY(int M, int N, double* H, double* G, double* S);
-void RANDU(int& IX, double& YFL);
+// --- linkulesfitters.f — fitter routines (REMOVED, fitting feature stripped) ---
 
 // --- source.f subroutines (Phase 8) ---
 // I/O and parsing
@@ -436,13 +427,8 @@ void INELD2(float TSTART, int NUMHIN, int NUMTIM, int NUMTRM, int NUMANG,
 void INGRST(int& IRET);
 void INRDIN(int& IRTN);
 
-// Fitting
-void FITEL(int& IRET);
-void FITEL2(int& IRET);
-void FITINP(int& IRET, int NUMFLT, char8* FLTWRD, int NUMALI, char8* ALIAI);
+// L-extrapolation and CC support (fitting code removed)
 void LINTRP();
-void LMCFUN(int ITYPE, int MPARA, int MPTS, double* X, double* FS,
-            double* FJACOB, int& IERR);
 double LXTRPM(int IEXTYP, double BARA, double B, double BARC, double BARL,
               double DLMAX, int LX, int LDEL, double* ETAS, double WEEBOY);
 void LXTRP1(int IEXTYP, int N, int& ISIG, int IPRINT, double* XVALS, double* SVALS,
@@ -451,25 +437,10 @@ void LXTRP1(int IEXTYP, int N, int& ISIG, int IPRINT, double* XVALS, double* SVA
             double& CHISQ, int LX, int LDEL, double* ETAS, int MCHN, int JP, int JT);
 void LXTRP2(int IEXTYP, double BARA, double B, double BARC, double BARL,
             double DLMAX, int LI, double& SIZE, int LX, int LDEL, double* ETAS);
-void MAKDER(int NSTEPS, int NUMVS, int MXVSIN, int MPARA,
-            double* DERIV, double* POTRL, double* POTIM, double STEPSZ);
-void SDERIV(int& IRTN);
-void SECDER(int& IRTN);
-void DERCHK(int NPARA, int NPTS, double STEP, double* PARAM, double* FS,
-            double* FGRAD, double* TGRAD, double* FSAVE);
-void GENBNX(int IPASS, int* NBINDX, int* MBINDX, int* BINDEX, int NBASCP,
-            int* BASCP, int MBASCP, int NBASDF, int* BASDF, int MBASDF);
 void GETBFC(int ILI, int J, double DELTA, double RASYMP, int NMBFC,
             float* BFACIN, float* BFACOT, int MBNDX, int* BINDEX,
             int MCHNDF, int* CHNDEF, int MCHNVL, double* CHNVAL,
             int MBASDF, int* BASDEF, int NBASDF, float* FG);
-void SETFIT(int& IRET);
-void SETBFC(int NBINDX, int MBINDX, int* BINDEX, int MCHNDF, int* CHNDF_i,
-            float* CHNDF_f, int* NUMJS, int LMIN2, double* R2S, int LMXMX,
-            double* SIG1, double* SIG2, double DUM, int FLGSW, int IPASS,
-            int NMFFAC, float* CL2FF, double* WRKFF, int IDIM1, int LDLDIM,
-            double* WRKWK, double* WRKFI, int IDIM2, double* WRKST,
-            int& IRET, double& CLTIME);
 void SETBRN(int NBINDX, int MBINDX, int* BINDEX, int MCHNDF, int* CHNDF_i,
             int MBASDF, int* BASDF_i, int MBASCP, int* BASCP_i, float* BASCP_f,
             int NUMLIS, double* LIS, int LMIN2, float* CL2FF,

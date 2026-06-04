@@ -112,6 +112,12 @@ for f in "$TESTDIR"/test_inel_*.in; do
 done
 
 echo ""
+echo "--- Coupled Channels ---"
+for f in "$TESTDIR"/cc_*.in; do
+    [ -f "$f" ] && run_test "$f"
+done
+
+echo ""
 echo "=== Summary ==="
 echo "  PASS:  $PASS"
 echo "  FAIL:  $FAIL"

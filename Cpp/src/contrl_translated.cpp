@@ -920,14 +920,12 @@ L480:
     goto L950;
 
 // -----------------------------------------------------------------------
-//   FIT BEING SPECIFIED--- READ INPUT
+//   FIT BEING SPECIFIED — fitting feature removed; report error and skip
 // -----------------------------------------------------------------------
 L492:
-    if (ICNTT == 0) ISTART(ISIZE);
-    ICNTT = 1;
-    FITINP(IRET, NUMFLT, FLTWRD, NUMALI, ALIAI);
-    PROBLM = 21;
-    goto L535;
+    std::printf("\n**** FIT KEYWORD NOT AVAILABLE IN this VERSION (fitting feature removed).\n");
+    IRET = 0;
+    goto L900;
 
 // -----------------------------------------------------------------------
 //     DATA ( ... )  READS IN DATA FOR FITTER

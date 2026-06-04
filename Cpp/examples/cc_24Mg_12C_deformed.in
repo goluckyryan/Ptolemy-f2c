@@ -1,0 +1,284 @@
+HEADER Gary & Volant 12C + 24Mg
+
+REACTION   24Mg(12C 12C)24Mg   Ecm = 15
+CHANNELS ( NAME, EP, JP, ET, JT    0 0.0 0+ 0. 0+
+   2 0. 0+  1.37 2+   )
+$$$   2 0. 0+  1.37 2+     20 0. 0+ 4.439 2+
+$$$  22 4.439  2+ 1.37 2+     )
+COUPLING ( COUPLED ORDER betan betac   NUCLEUS MULTIPOLE=2
+       MODEL=deformed      $$$   DEFORMED
+   0-2 1 0.52  0.498   ;     $  (Rp+Rt)/Rt*0.29 = .52
+  )
+PARAMETERSET  INELOCA1   MAXITER=15
+  LMAX=40
+SCATASYMP=40  STEPSPER=12
+ANGLEMAX=180  anglestep = 5
+PRINT= 2
+INCOMING
+$  
+V = 36.0  R = 6.207   A = .52   RC0 = 1.24
+W =  4.0  
+REALPOTENTIAL  DEFORMED    IMAGPOTENTIAL DEFORMED
+ALLOCATE BETAP = 0.     ALLOCATE BETAT = 0.52
+;
+OUTGOING  
+          R = 6.207   A = .52 
+;  
+;
+
+reset
+
+REACTION   24Mg(12C 12C)24Mg   Ecm = 16
+CHANNELS ( NAME, EP, JP, ET, JT    0 0.0 0+ 0. 0+
+   2 0. 0+  1.37 2+   )
+$$$   2 0. 0+  1.37 2+     20 0. 0+ 4.439 2+
+$$$  22 4.439  2+ 1.37 2+     )
+COUPLING ( COUPLED ORDER betan betac   NUCLEUS MULTIPOLE=2
+       MODEL=deformed      $$$   DEFORMED
+   0-2 1 0.52  0.498   ;     $  (Rp+Rt)/Rt*0.29 = .52
+  )
+PARAMETERSET  INELOCA1   MAXITER=15
+  LMAX = 45
+SCATASYMP=40  STEPSPER=12
+ANGLEMAX=180  anglestep = 5
+PRINT= 2
+INCOMING
+$  
+V = 36.0  R = 6.207   A = .52   RC0 = 1.24
+W =  4.0  
+REALPOTENTIAL  DEFORMED    IMAGPOTENTIAL DEFORMED
+ALLOCATE BETAP = 0.     ALLOCATE BETAT = 0.52
+;
+OUTGOING  
+          R = 6.207   A = .52 
+;  
+;
+
+
+reset
+
+REACTION   24Mg(12C 12C)24Mg   Ecm = 17
+CHANNELS ( NAME, EP, JP, ET, JT    0 0.0 0+ 0. 0+
+   2 0. 0+  1.37 2+   )
+$$$   2 0. 0+  1.37 2+     20 0. 0+ 4.439 2+
+$$$  22 4.439  2+ 1.37 2+     )
+COUPLING ( COUPLED ORDER betan betac   NUCLEUS MULTIPOLE=2
+       MODEL=deformed      $$$   DEFORMED
+   0-2 1 0.52  0.498   ;     $  (Rp+Rt)/Rt*0.29 = .52
+  )
+PARAMETERSET  INELOCA1   MAXITER=15
+  LMAX= 50
+SCATASYMP=40  STEPSPER=12
+ANGLEMAX=180  anglestep = 5
+PRINT= 2
+INCOMING
+$  
+V = 36.0  R = 6.207   A = .52   RC0 = 1.24
+W =  4.0  
+REALPOTENTIAL  DEFORMED    IMAGPOTENTIAL DEFORMED
+ALLOCATE BETAP = 0.     ALLOCATE BETAT = 0.52
+;
+OUTGOING  
+          R = 6.207   A = .52 
+;  
+;
+
+reset
+
+REACTION   24Mg(12C 12C)24Mg   Ecm = 18
+CHANNELS ( NAME, EP, JP, ET, JT    0 0.0 0+ 0. 0+
+   2 0. 0+  1.37 2+   )
+$$$   2 0. 0+  1.37 2+     20 0. 0+ 4.439 2+
+$$$  22 4.439  2+ 1.37 2+     )
+COUPLING ( COUPLED ORDER betan betac   NUCLEUS MULTIPOLE=2
+       MODEL=deformed      $$$   DEFORMED
+   0-2 1 0.52  0.498   ;     $  (Rp+Rt)/Rt*0.29 = .52
+  )
+PARAMETERSET  INELOCA1   MAXITER=15
+  LMAX= 50
+SCATASYMP=40  STEPSPER=12
+ANGLEMAX=180  anglestep = 5
+PRINT= 2
+INCOMING
+$  
+V = 36.0  R = 6.207   A = .52   RC0 = 1.24
+W =  4.0  
+REALPOTENTIAL  DEFORMED    IMAGPOTENTIAL DEFORMED
+ALLOCATE BETAP = 0.     ALLOCATE BETAT = 0.52
+;
+OUTGOING  
+          R = 6.207   A = .52 
+;  
+;
+
+reset
+
+REACTION   24Mg(12C 12C)24Mg   Ecm = 20
+CHANNELS ( NAME, EP, JP, ET, JT    0 0.0 0+ 0. 0+
+   2 0. 0+  1.37 2+   )
+$$$   2 0. 0+  1.37 2+     20 0. 0+ 4.439 2+
+$$$  22 4.439  2+ 1.37 2+     )
+COUPLING ( COUPLED ORDER betan betac   NUCLEUS MULTIPOLE=2
+       MODEL=deformed      $$$   DEFORMED
+   0-2 1 0.52  0.498   ;     $  (Rp+Rt)/Rt*0.29 = .52
+  )
+PARAMETERSET  INELOCA1   MAXITER=15
+  LMAX= 55
+SCATASYMP=40  STEPSPER=12
+ANGLEMAX=180  anglestep = 5
+PRINT= 2
+INCOMING
+$  
+V = 36.0  R = 6.207   A = .52   RC0 = 1.24
+W =  4.0  
+REALPOTENTIAL  DEFORMED    IMAGPOTENTIAL DEFORMED
+ALLOCATE BETAP = 0.     ALLOCATE BETAT = 0.52
+;
+OUTGOING  
+          R = 6.207   A = .52 
+;  
+;
+
+reset
+
+REACTION   24Mg(12C 12C)24Mg   Ecm = 22
+CHANNELS ( NAME, EP, JP, ET, JT    0 0.0 0+ 0. 0+
+   2 0. 0+  1.37 2+   )
+$$$   2 0. 0+  1.37 2+     20 0. 0+ 4.439 2+
+$$$  22 4.439  2+ 1.37 2+     )
+COUPLING ( COUPLED ORDER betan betac   NUCLEUS MULTIPOLE=2
+       MODEL=deformed      $$$   DEFORMED
+   0-2 1 0.52  0.498   ;     $  (Rp+Rt)/Rt*0.29 = .52
+  )
+PARAMETERSET  INELOCA1   MAXITER=15
+  LMAX= 60
+SCATASYMP=40  STEPSPER=12
+ANGLEMAX=180  anglestep = 5
+PRINT= 2
+INCOMING
+$  
+V = 36.0  R = 6.207   A = .52   RC0 = 1.24
+W =  4.0  
+REALPOTENTIAL  DEFORMED    IMAGPOTENTIAL DEFORMED
+ALLOCATE BETAP = 0.     ALLOCATE BETAT = 0.52
+;
+OUTGOING  
+          R = 6.207   A = .52 
+;  
+;
+
+reset
+
+REACTION   24Mg(12C 12C)24Mg   Ecm = 24
+CHANNELS ( NAME, EP, JP, ET, JT    0 0.0 0+ 0. 0+
+   2 0. 0+  1.37 2+   )
+$$$   2 0. 0+  1.37 2+     20 0. 0+ 4.439 2+
+$$$  22 4.439  2+ 1.37 2+     )
+COUPLING ( COUPLED ORDER betan betac   NUCLEUS MULTIPOLE=2
+       MODEL=deformed      $$$   DEFORMED
+   0-2 1 0.52  0.498   ;     $  (Rp+Rt)/Rt*0.29 = .52
+  )
+PARAMETERSET  INELOCA1   MAXITER=15
+  LMAX= 60
+SCATASYMP=40  STEPSPER=12
+ANGLEMAX=180  anglestep = 5
+PRINT= 2
+INCOMING
+$  
+V = 36.0  R = 6.207   A = .52   RC0 = 1.24
+W =  4.0  
+REALPOTENTIAL  DEFORMED    IMAGPOTENTIAL DEFORMED
+ALLOCATE BETAP = 0.     ALLOCATE BETAT = 0.52
+;
+OUTGOING  
+          R = 6.207   A = .52 
+;  
+;
+
+reset
+
+REACTION   24Mg(12C 12C)24Mg   Ecm = 26
+CHANNELS ( NAME, EP, JP, ET, JT    0 0.0 0+ 0. 0+
+   2 0. 0+  1.37 2+   )
+$$$   2 0. 0+  1.37 2+     20 0. 0+ 4.439 2+
+$$$  22 4.439  2+ 1.37 2+     )
+COUPLING ( COUPLED ORDER betan betac   NUCLEUS MULTIPOLE=2
+       MODEL=deformed      $$$   DEFORMED
+   0-2 1 0.52  0.498   ;     $  (Rp+Rt)/Rt*0.29 = .52
+  )
+PARAMETERSET  INELOCA1   MAXITER=15
+  LMAX= 60
+SCATASYMP=40  STEPSPER=12
+ANGLEMAX=180  anglestep = 5
+PRINT= 2
+INCOMING
+$  
+V = 36.0  R = 6.207   A = .52   RC0 = 1.24
+W =  4.0  
+REALPOTENTIAL  DEFORMED    IMAGPOTENTIAL DEFORMED
+ALLOCATE BETAP = 0.     ALLOCATE BETAT = 0.52
+;
+OUTGOING  
+          R = 6.207   A = .52 
+;  
+;
+
+reset
+
+REACTION   24Mg(12C 12C)24Mg   Ecm = 28
+CHANNELS ( NAME, EP, JP, ET, JT    0 0.0 0+ 0. 0+
+   2 0. 0+  1.37 2+   )
+$$$   2 0. 0+  1.37 2+     20 0. 0+ 4.439 2+
+$$$  22 4.439  2+ 1.37 2+     )
+COUPLING ( COUPLED ORDER betan betac   NUCLEUS MULTIPOLE=2
+       MODEL=deformed      $$$   DEFORMED
+   0-2 1 0.52  0.498   ;     $  (Rp+Rt)/Rt*0.29 = .52
+  )
+PARAMETERSET  INELOCA1   MAXITER=15
+  LMAX= 60
+SCATASYMP=40  STEPSPER=12
+ANGLEMAX=180  anglestep = 5
+PRINT= 2
+INCOMING
+$  
+V = 36.0  R = 6.207   A = .52   RC0 = 1.24
+W =  4.0  
+REALPOTENTIAL  DEFORMED    IMAGPOTENTIAL DEFORMED
+ALLOCATE BETAP = 0.     ALLOCATE BETAT = 0.52
+;
+OUTGOING  
+          R = 6.207   A = .52 
+;  
+;
+
+reset
+
+REACTION   24Mg(12C 12C)24Mg   Ecm = 30
+CHANNELS ( NAME, EP, JP, ET, JT    0 0.0 0+ 0. 0+
+   2 0. 0+  1.37 2+   )
+$$$   2 0. 0+  1.37 2+     20 0. 0+ 4.439 2+
+$$$  22 4.439  2+ 1.37 2+     )
+COUPLING ( COUPLED ORDER betan betac   NUCLEUS MULTIPOLE=2
+       MODEL=deformed      $$$   DEFORMED
+   0-2 1 0.52  0.498   ;     $  (Rp+Rt)/Rt*0.29 = .52
+  )
+PARAMETERSET  INELOCA1   MAXITER=15
+  LMAX= 70
+SCATASYMP=40  STEPSPER=12
+ANGLEMAX=180  anglestep = 5
+PRINT= 2
+INCOMING
+$  
+V = 36.0  R = 6.207   A = .52   RC0 = 1.24
+W =  4.0  
+REALPOTENTIAL  DEFORMED    IMAGPOTENTIAL DEFORMED
+ALLOCATE BETAP = 0.     ALLOCATE BETAT = 0.52
+;
+OUTGOING  
+          R = 6.207   A = .52 
+;  
+;
+
+
+
+END

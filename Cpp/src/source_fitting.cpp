@@ -1,8 +1,11 @@
-// source_fitting.cpp — Fitting, chi-square, L-extrapolation, derivatives
-// Translated from source.f: CALFUN+CALGRA, FITEL, FITEL2, FITINP, LINTRP, LMCFUN,
-//   LXTRPM, LXTRP1, LXTRP2, MAKDER, SDERIV, SECDER, DERCHK, GENBNX, GETBFC,
-//   SETFIT, SETBFC, SETBRN
-// Phase 8 — stub bodies to be filled in from Fortran source
+// source_fitting.cpp — L-extrapolation and CC-Born support routines.
+// Fitting subroutines (FITEL, FITEL2, FITINP, LMCFUN, MAKDER, SDERIV, SECDER,
+// DERCHK, SETFIT, plus GENBNX/SETBFC stubs) have been removed; this code
+// no longer supports the FIT keyword. Real GENBNX_full/SETBFC_full live in
+// coulst_translated.cpp.
+//
+// Translated from source.f: LXTRPM, LXTRP1, LXTRP2, GETBFC, SETBRN
+// LINTRP lives in lintrp_translated.cpp.
 
 #include "ptolemy_types.h"
 #include "ptolemy_commons.h"
@@ -13,21 +16,6 @@
 #include <cstdio>
 #include <cstring>
 #include <cmath>
-
-void FITEL(int& IRET)
-{ IRET = 0; std::printf(" FITEL: stub — translate from source.f L15647-16315\n"); }
-
-void FITEL2(int& IRET)
-{ IRET = 0; std::printf(" FITEL2: stub — translate from source.f L16317-16915\n"); }
-
-void FITINP(int& IRET, int NUMFLT, char8* FLTWRD, int NUMALI, char8* ALIAI)
-{ IRET = 0; std::printf(" FITINP: stub — translate from source.f L16917-17283\n"); }
-
-// LINTRP → lintrp_translated.cpp
-
-void LMCFUN(int ITYPE, int MPARA, int MPTS, double* X, double* FS,
-            double* FJACOB, int& IERR)
-{ IERR = 0; std::printf(" LMCFUN: stub — translate from source.f L24798-24850\n"); }
 
 // 4-argument RTXLNX: finds real solution of  A*X + B*LN(X) + C = 0
 extern double RTXLNX(double A, double B, double C, double ACC);
@@ -307,24 +295,6 @@ void LXTRP2(int IEXTYP, double BARA, double B, double BARC, double BARL,
     }
 }
 
-void MAKDER(int NSTEPS, int NUMVS, int MXVSIN, int MPARA,
-            double* DERIV, double* POTRL, double* POTIM, double STEPSZ)
-{ std::printf(" MAKDER: stub — translate from source.f L25596-25748\n"); }
-
-void SDERIV(int& IRTN)
-{ IRTN = 0; std::printf(" SDERIV: stub — translate from source.f L31178-31291\n"); }
-
-void SECDER(int& IRTN)
-{ IRTN = 0; std::printf(" SECDER: stub — translate from source.f L31293-31510\n"); }
-
-void DERCHK(int NPARA, int NPTS, double STEP, double* PARAM_arr, double* FS,
-            double* FGRAD, double* TGRAD, double* FSAVE)
-{ std::printf(" DERCHK: stub — translate from source.f L14564-14633\n"); }
-
-void GENBNX(int IPASS, int* NBINDX, int* MBINDX, int* BINDEX, int NBASCP,
-            int* BASCP, int MBASCP, int NBASDF, int* BASDF, int MBASDF)
-{ std::printf(" GENBNX: stub — translate from source.f L17285-17556\n"); }
-
 void GETBFC(int ILI, int J, double DELTA, double RASYMP, int NMBFC,
             float* BFACIN, float* BFACOT, int MBNDX, int* BINDEX,
             int MCHNDF, int* CHNDEF, int MCHNVL, double* CHNVAL,
@@ -430,17 +400,6 @@ void GETBFC(int ILI, int J, double DELTA, double RASYMP, int NMBFC,
     #undef BASDEF_F
     #undef FG_F
 }
-
-void SETFIT(int& IRET)
-{ IRET = 0; std::printf(" SETFIT: stub — translate from source.f L32576-32878\n"); }
-
-void SETBFC(int NBINDX, int MBINDX, int* BINDEX, int MCHNDF, int* CHNDF_i,
-            float* CHNDF_f, int* NUMJS_arr, int LMIN2, double* R2S, int LMXMX,
-            double* SIG1, double* SIG2, double DUM, int FLGSW, int IPASS,
-            int NMFFAC, float* CL2FF, double* WRKFF, int IDIM1, int LDLDIM,
-            double* WRKWK, double* WRKFI, int IDIM2, double* WRKST,
-            int& IRET, double& CLTIME)
-{ IRET = 0; CLTIME = 0.0; std::printf(" SETBFC: stub — translate from source.f L31512-31798\n"); }
 
 void SETBRN(int NBINDX, int MBINDX, int* BINDEX, int MCHNDF, int* CHNDF_i,
             int MBASDF, int* BASDF_i, int MBASCP, int* BASCP_i, float* BASCP_f,

@@ -29,10 +29,10 @@ Requires the Cleopatra binary at `/home/ryan/ptolemy_2019/digios/analysis/Cleopa
 
 ## Test Results
 
-- **Integrated cross sections:** 31/31 PASS (0.000%)
+- **Integrated cross sections:** 38/38 PASS (0.000%)
 - **Angle-by-angle precision:** 21/24 at 0.0000%, 3 at deep diffraction minima where all binaries (C++, gfortran, Cleopatra) disagree with each other
 - **Random fuzz** (800 cases, seed=42): 789 PASS / 9 WARN / 2 FAIL (FAILs are FP sensitivity + d-inelastic extrapolation failure shared with Fortran). See `Claude_attack/docs/tested_cases.md`.
-- **Potential-form linkule coverage:** SHAPE, GAUSSIAN, FIXEDWOO, PARITWOO, JDEPEN, JDEPENWS all verified to match Cleopatra exactly. SPLINE and LAGRANGE run but have small (≤2%) discrepancies under investigation. DEFORMED, BKGPTELP, LTSTELP, TWOSHAPE remain stubs.
+- **Potential-form linkule coverage:** SHAPE, GAUSSIAN, FIXEDWOO, PARITWOO, JDEPEN, JDEPENWS, SPLINE, LAGRANGE, DEFORMED, TWOSHAPE all verified to match Cleopatra exactly. BKGPTELP, LTSTELP remain stubs (need FKANDM/INTRNL plumbing). Wavefunction linkules REID, OHTA, RAWITSCH are stubs (large translations pending). FIT keyword removed entirely.
 
 ## Elastic Scattering
 
@@ -53,6 +53,9 @@ Requires the Cleopatra binary at `/home/ryan/ptolemy_2019/digios/analysis/Cleopa
 | `test_elastic_paritwoo` | 3He + 4He | 30 MeV | 1141.784 | PARITWOO linkule (parity-dependent WS depth, L-dependent path) |
 | `test_elastic_jdepen` | 16O + 48Ca | 56 MeV | 889.155 | JDEPEN linkule (J-dependent depth via 1+P1·J+P2·J²) |
 | `test_elastic_jdepenws` | 16O + 48Ca | 56 MeV | 880.139 | JDEPENWS linkule (J-dependent depth via Fermi factor, uses PARAMS_at) |
+| `test_elastic_spline` | 16O + 48Ca | 56 MeV | 883.784 | SPLINE linkule (cubic-spline log\|V\| interpolation) |
+| `test_elastic_lagrange` | 16O + 48Ca | 56 MeV | 880.378 | LAGRANGE linkule (Aitken-Lagrange interpolation, IORDER via INTGER(38)=PARITS[1]) |
+| `test_elastic_twoshape` | 16O + 48Ca | 56 MeV | 966.943 | TWOSHAPE linkule (two tabulated shapes summed with V & PARAM1 scales) |
 
 ## Transfer DWBA
 
@@ -98,6 +101,7 @@ Requires the Cleopatra binary at `/home/ryan/ptolemy_2019/digios/analysis/Cleopa
 | `cc_208Pb_90Zr` | 208Pb(90Zr,90Zr')208Pb* 3- | 1350 MeV | 0.10348 | Octupole Coulomb excitation |
 | `cc_208Pb_90Zr_1minus` | 208Pb(90Zr,90Zr')208Pb* 1- | 1350 MeV | 0.30517 | Dipole Coulomb excitation |
 | `cc_24Mg_12C` | 24Mg(12C,12C')24Mg* 2+ | ECM=20 | 64.315 | Rotational model |
+| `cc_24Mg_12C_deformed` | 24Mg(12C,12C')24Mg* 2+ | ECM=20 | 111.95 (last) | DEFORMED model — exercises DEFORMED linkule + CC |
 
 > **Note:** CC output has two TOTAL lines. The first (`TOTAL: 0.00`) is elastic; the second is the inelastic cross section.
 
