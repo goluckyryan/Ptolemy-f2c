@@ -87,6 +87,54 @@ docs/               Theory documentation and input file reference
 |---|---|---|
 | 208Pb(90Zr,90Zr')208Pb* 1- | 0.30517 mb | 0.0000% |
 
+### Known limitations — collective inelastic model has a narrow domain
+
+Ptolemy's inelastic scattering uses the **vibrational / collective
+excitation model** from the original Fortran source: the excitation is
+treated as a one-step surface deformation
+
+  V(r, θ) = V₀(r) - β_L R₀ ∂V/∂R · Y_LM(θ)
+
+parametrized by a single deformation amplitude `BELX` = β_L (input from
+`PARAMETERSET INELOCA*`). This is the right physics for low-lying
+collective 2⁺ / 3⁻ states of **even-even spherical heavy nuclei**
+(e.g. 90Zr, 208Pb, Sn isotopes, 40Ca) at moderate excitation. It is
+**physically inappropriate** for:
+
+- **Light targets** (12C, 16O, 20Ne, ...) where the excited states are
+  single-particle or cluster in character, not collective surface modes.
+- **Excitation energies above the particle-emission threshold** (~7 MeV
+  for 12C, ~12 MeV for 16O) where the daughter nucleus is unbound and
+  the DWBA assumption of a stable bound final state is violated.
+- **Large deformation amplitudes** outside the small-β linearization the
+  one-step model assumes.
+
+When the model is applied outside its domain — most visibly in
+`(d,d')` on light targets with E_x ≳ 4 MeV at 20–60 MeV beam energy —
+the code fails numerically downstream of the physics mismatch. The
+L-extrapolation breaks (`**** ERROR: CANNOT EXTRAPOLATE FOR CHANNEL`),
+|S(L)| diverges at high L, and the reported DCS becomes meaningless
+(typically 10¹⁷ mb/sr or worse). Ptolemy-f2c reproduces the Cleopatra
+failure mode bit-identically (1:1 translation).
+
+A random-test sweep of 800 reactions found ~60 affected cases, all in
+the high-E_x light-target `(d,d')` corner described above. The DCS
+column flag `% FROM L>LMAX` is the canonical diagnostic: any value
+far from 0.0 means the answer is dominated by extrapolated
+(non-converged) partial waves and should not be trusted. Increasing
+`LMAX` / `LMAXADD` / `ASYMPTOPIA` typically makes things worse, not
+better, because the broken extrapolation simply runs longer.
+
+**For collective inelastic scattering outside the model's domain** —
+use FRESCO or ECIS with an explicit microscopic form factor, or
+compare against experimental data.
+
+The sibling project [PtolemyCpp](https://github.com/goluckyryan/PtolemyCpp)
+(modern C++ refactor) silently truncates the failed extrapolation
+contribution at LMAX instead of including the garbage — also incorrect,
+but in a different direction. Neither code produces physically meaningful
+DCS for reactions in this regime.
+
 ## Building
 
 ### C++ version (recommended)
