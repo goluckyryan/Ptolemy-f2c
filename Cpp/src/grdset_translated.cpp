@@ -1336,9 +1336,18 @@ L820:
             if (!PAS1SW) {
                 // Pass 2: store phi angles and weighted BS product
                 JCNT++;
-                TEMP = (T1*RO + S1*RI*X) / RT;
+                // Fix (not in Fortran): BSPROD snaps RT/RP to exactly 0 when
+                // RT**2 < 1e-8, which gives 0/0 = NaN here.  That NaN poisons
+                // the H's at this (RI,RO) point and SFROMI then zeroes whole
+                // partial waves, so sigma(E) jumps erratically (e.g. 27Mg(d,p)
+                // at ELAB=24, 25, 27 MeV; Fortran prints NaN).  At r=0 the
+                // azimuth is irrelevant (only Y00 survives), so use angle 0,
+                // and clamp the cosine against roundoff outside [-1,1].
+                TEMP = (RT > 0.0) ? (T1*RO + S1*RI*X) / RT : 1.0;
+                TEMP = std::min(1.0, std::max(-1.0, TEMP));
                 ALLOC4(LPHIT + JCNT) = (float)(PHISGN * std::acos(TEMP));
-                TEMP = (T2*RO + S2*RI*X) / RP;
+                TEMP = (RP > 0.0) ? (T2*RO + S2*RI*X) / RP : 1.0;
+                TEMP = std::min(1.0, std::max(-1.0, TEMP));
                 ALLOC4(LPHIP + JCNT) = (float)(PHISGN * std::acos(TEMP));
                 ALLOC4(LPHI + JCNT) = (float)PHI;
                 ALLOC4(LTRP + JCNT) = (float)(DPHI * FIFO);

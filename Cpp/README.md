@@ -32,7 +32,9 @@ Compared against the Fortran Cleopatra binary across 32 curated test cases:
 The 11 non-PASS cases are all Fortran bugs:
 - 5 inelastic proton cases produce `NaN` in Fortran (known Cleopatra bug)
 - 5 transfer cases crash Fortran with rc=206 (array bounds violation)
-- 1 transfer case produces `NaN` in Fortran
+- 1 transfer case produces `NaN` in Fortran (12C(3He,n): GRDSET division by
+  RT = 0, fixed in the C++; see the top-level README, "Fortran bugs fixed in
+  the C++ version")
 
 ## Build
 

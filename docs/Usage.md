@@ -139,6 +139,17 @@ PARAMETERSET dpsa              $ alternate DWBA
 | DPSA, DPSB | Standard DWBA parameter sets |
 | DPDA, DPDB | Dense DWBA parameter sets |
 
+A parameter set overwrites the grid keywords (`NPSUM`, `NPDIF`, `NPPHI`,
+`SUMPOINT`, ...); `DPSB` sets `NPSUM = 40`, `NPDIF = 40`. To override them, put
+the keywords **after** the `PARAMETERSET` line. For excitation functions (σ vs.
+E), the `DPSB` grid gives ~1–2% steps where the interpolated grid gains a point.
+Raising `NPSUM` removes them (NPDIF has little effect):
+
+```
+PARAMETERSET dpsb r0target
+npsum=80
+```
+
 ### Elastic scattering
 
 ```

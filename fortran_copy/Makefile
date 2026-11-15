@@ -2,8 +2,9 @@ FC      = gfortran
 CC      = gcc
 EXEC    = ptolemy.x
 
-FFLAGS  = -m32 -g -O0 -w -std=legacy -fallow-argument-mismatch -fno-range-check -fallow-invalid-boz
-CFLAGS  = -m32
+# -m32, -fdefault-real-8 and -O0 are all required; see compile.sh for why.
+FFLAGS  = -m32 -g -O0 -fdefault-real-8 -fdefault-double-8 -w -std=legacy -fallow-argument-mismatch -fno-range-check -fallow-invalid-boz
+CFLAGS  = -m32 -std=gnu89 -Wno-implicit-function-declaration
 
 FSRC    = av18.f fortlib.f gfortran_stuff.f keep.f keepsub.f keptsub.f \
           linkule.f linkulesfitters.f masstable.f numbered_store.f phiffer.f \

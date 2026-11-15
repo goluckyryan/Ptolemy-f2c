@@ -8,10 +8,13 @@ original Cleopatra 32-bit binary.
 
 The original Fortran source relies on non-standard features (EQUIVALENCE type
 punning, COMMON block overlays, HOLLERITH constants, BOZ initializations) that
-are compiler-specific. Recompiling with modern gfortran — even with `-m32` and
-all compatibility flags — produces **incorrect results** for inelastic
-scattering. The C++ translation explicitly maps every COMMON block and
-allocator trick to correct C++ structs, making it portable and reliable.
+are compiler-specific. Modern gfortran reproduces the reference binary only
+with a narrow, non-obvious flag set (`-m32 -O0 -fdefault-real-8
+-fdefault-double-8`, see [Fortran version](#fortran-version)); a 64-bit build,
+an `-O3` build, or a build without `-fdefault-real-8` silently gives garbage
+for many transfer, inelastic and CC inputs. The C++ translation explicitly
+maps every COMMON block and allocator trick to correct C++ structs, making it
+portable and reliable.
 
 ## Directory Structure
 
@@ -20,7 +23,7 @@ Cpp/                C++ transliteration of the full Ptolemy source
   examples/         Example input files (elastic, transfer, inelastic, CC)
   include/          Header files (COMMON blocks, allocator, types)
   src/              Source files (~61k lines)
-fortran_copy/       Clean Fortran sources with compile script (gfortran -m32)
+fortran_copy/       Unmodified Fortran sources + compile script (gfortran -m32 -fdefault-real-8)
 docs/               Theory documentation and input file reference
 ```
 
@@ -87,6 +90,45 @@ docs/               Theory documentation and input file reference
 |---|---|---|
 | 208Pb(90Zr,90Zr')208Pb* 1- | 0.30517 mb | 0.0000% |
 
+### Fortran bugs fixed in the C++ version
+
+The C++ follows the Fortran line by line, with one deliberate exception, where
+the original code produces NaN:
+
+**GRDSET: division by zero in the transfer φ-grid (`source.f:19303`).**
+`BSPROD` snaps the core–nucleon distance RT (or RP) to exactly 0 when
+RT² < 1e-8. GRDSET then evaluates `acos((T1*RO + S1*RI*X)/RT)` = acos(0/0) = NaN
+at that (RI, RO, cos φ) point. The NaN spreads through the H-kernel into the
+radial integrals of the lowest partial waves, and the Fortran `TOTAL:` becomes
+NaN. Whether some grid point lands exactly on RT = 0 depends on beam energy
+and on the grid (NPSUM), so an excitation function shows isolated failures:
+
+| 27Mg(d,p)28Mg g.s., `dpsb` | 23.5 MeV | 24 MeV | 24.5 MeV | 25 MeV | 27 MeV |
+|---|---|---|---|---|---|
+| Fortran (Cleopatra / `fortran_copy -m32`) | 2.6090 | NaN | 2.4273 | NaN | NaN |
+| C++ before fix | 2.6090 | 1.4864 | 2.4273 | 1.3868 | 0.82378 |
+| C++ after fix | 2.6090 | 2.5150 | 2.4273 | 2.3470 | 2.0491 |
+
+Before the fix, the C++ was worse than the Fortran: NaN guards added during the
+port (`SFROMI`) quietly zeroed the affected partial waves (L_in = 0–5 here) and
+printed a believable but wrong total. The fix (`Cpp/src/grdset_translated.cpp`)
+uses azimuth 0 when RT or RP is 0, which is safe because only the Y₀₀ part of
+the bound state survives at r = 0. It also clamps the cosine to [-1, 1]. With
+the fix, the 27Mg(d,p) result at 24 MeV converges with NPSUM (40/60/120 →
+2.5150/2.5169/2.5169). `transfer_tests/transfer_12C_3Hen.in` (listed above as
+"Fortran NaN") was hitting the same bug: C++ now gives 0.05585 mb, stable to
+0.02% under grid refinement. Every input that runs without NaN in Fortran
+gives the same output as before the fix.
+
+**Grid steps in excitation functions (not a bug).** The interpolated
+integration grid has `NPSUMI = int((SUMMAX-SUMMIN)·SUMPTS·(k_i+k_o)/4π)`
+points, so it gains a point at certain energies. At `dpsb` precision this
+shows up as ~1–2% steps in σ(E) (e.g. 27Mg(d,p) near 14 MeV). Fortran
+behaves the same way. For smooth excitation functions, raise NPSUM after
+the parameter set, e.g. `PARAMETERSET dpsb r0target` followed by `npsum=80`.
+For 27Mg(d,p) near 14 MeV, NPSUM = 60 and 80 agree to 4 digits; raising NPDIF
+changes nothing.
+
 ### Known limitations — collective inelastic model has a narrow domain
 
 Ptolemy's inelastic scattering uses the **vibrational / collective
@@ -150,13 +192,25 @@ Requires: `g++` with C++17 support.
 
 ```bash
 cd fortran_copy
-bash compile.sh  # produces ptolemy.x (32-bit, gfortran -m32 -O0)
+bash compile.sh  # or: make  -> ptolemy.x (32-bit)
 ```
 
-Requires: `gfortran`, `gcc` with 32-bit multilib support.
+Requires: `gfortran`, `gcc` with 32-bit multilib support
+(Debian/Ubuntu: `gcc-multilib gfortran-multilib`).
 
-**Note:** The gfortran build does not reproduce all reaction types correctly.
-Use the Cleopatra binary or the C++ translation as reference.
+The flags are **not optional**:
+
+| Flag | Without it |
+|---|---|
+| `-m32` | 64-bit build: 1e+37–1e+39 mb or NaN for many transfer/inelastic/CC inputs |
+| `-fdefault-real-8` (+ `-fdefault-double-8`) | 13 of 62 test inputs blow up to 1e+37–1e+39 or NaN |
+| `-O0` | `-O3` breaks EQUIVALENCE type punning (spins read as 0/2, run aborts) |
+
+With all of them, `ptolemy.x` reproduces the Cleopatra 32-bit reference binary
+to full printed precision (`TOTAL:` line) on all 62 inputs in `Cpp/examples/`
+and `transfer_tests/`. Long outputs (e.g. fitting runs) can still differ in the
+last printed digit, because Cleopatra used x87 80-bit arithmetic and gfortran
+uses SSE.
 
 ## Running
 

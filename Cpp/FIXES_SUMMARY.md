@@ -43,6 +43,20 @@ Added NaN/inf check on DW products after distorted wave computation.
 Reverted `ALLOC_base`/`ALLOC4_base` to `&ALLOC`/`&ALLOC4` for BETCAL calls,
 because BETCAL uses F1/F2/F3 macros with `(i)-1` (internal 0-based adjustment).
 
+### 10. GRDSET acos(0/0) NaN when RT or RP is exactly 0 (Fortran bug)
+**File:** `src/grdset_translated.cpp` (Fortran `source.f:19303`)
+BSPROD snaps RT/RP to 0 when RT**2 < 1e-8, so `acos((T1*RO+S1*RI*X)/RT)` gives
+NaN in the pass-2 phi grid. The NaN reaches the H's, and the SFROMI guard (#7)
+then silently zeroes the lowest partial waves, so sigma(E) jumps erratically
+(27Mg(d,p) at 24/25/27 MeV: Fortran NaN, C++ about half the true value).
+Fix: use azimuth 0 when RT or RP is 0 (only Y00 survives at r=0) and clamp the
+cosine to [-1,1]. This is the one intentional deviation from the Fortran; outputs
+are unchanged wherever the Fortran does not produce NaN. Found with a
+`-ffpe-trap=invalid` build of the original Fortran. See README "Fortran bugs fixed".
+
+**Note on #7/#8:** these guards turn NaN into 0 silently. If a result looks
+wrong but finite, check the Fortran (`fortran_copy/ptolemy.x`) for NaN.
+
 ## Remaining Issues
 
 1. **GRDSET zero weights:** The RIROWTS array (bound state form factor × integration
