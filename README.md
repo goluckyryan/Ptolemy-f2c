@@ -9,8 +9,8 @@ original Cleopatra 32-bit binary.
 The original Fortran source relies on non-standard features (EQUIVALENCE type
 punning, COMMON block overlays, HOLLERITH constants, BOZ initializations) that
 are compiler-specific. Modern gfortran reproduces the reference binary only
-with a narrow, non-obvious flag set (`-m32 -O0 -fdefault-real-8
--fdefault-double-8`, see [Fortran version](#fortran-version)); a 64-bit build,
+with a narrow, non-obvious flag set (`-m32 -msse2 -mfpmath=sse -O0
+-fdefault-real-8 -fdefault-double-8`, see [Fortran version](#fortran-version)); a 64-bit build,
 an `-O3` build, or a build without `-fdefault-real-8` silently gives garbage
 for many transfer, inelastic and CC inputs. The C++ translation explicitly
 maps every COMMON block and allocator trick to correct C++ structs, making it
@@ -23,7 +23,7 @@ Cpp/                C++ transliteration of the full Ptolemy source
   examples/         Example input files (elastic, transfer, inelastic, CC)
   include/          Header files (COMMON blocks, allocator, types)
   src/              Source files (~61k lines)
-fortran_copy/       Unmodified Fortran sources + compile script (gfortran -m32 -fdefault-real-8)
+fortran_copy/       Unmodified Fortran sources + compile script (gfortran -m32 -msse2 -fdefault-real-8)
 docs/               Theory documentation and input file reference
 ```
 
@@ -205,12 +205,15 @@ The flags are **not optional**:
 | `-m32` | 64-bit build: 1e+37–1e+39 mb or NaN for many transfer/inelastic/CC inputs |
 | `-fdefault-real-8` (+ `-fdefault-double-8`) | 13 of 62 test inputs blow up to 1e+37–1e+39 or NaN |
 | `-O0` | `-O3` breaks EQUIVALENCE type punning (spins read as 0/2, run aborts) |
+| `-msse2 -mfpmath=sse` | x87 80-bit arithmetic flips last-bit grid tests (`VMIN < -2U` in GRDSET); 40Ca(d,3He) gives 0.87771 instead of 0.87759 |
 
 With all of them, `ptolemy.x` reproduces the Cleopatra 32-bit reference binary
-to full printed precision (`TOTAL:` line) on all 62 inputs in `Cpp/examples/`
-and `transfer_tests/`. Long outputs (e.g. fitting runs) can still differ in the
-last printed digit, because Cleopatra used x87 80-bit arithmetic and gfortran
-uses SSE.
+to full printed precision (`TOTAL:` line) on all 104 inputs in `Cpp/examples/`,
+`transfer_tests/` and the PtolemyCpp `test_inputs/`. Long fitting runs
+(`fortran_copy/tests/test02`, `test03`) still differ from Cleopatra in the last
+printed digit of some lines. The cause has not been pinned down; it is not
+x87-vs-SSE (both builds show it). One candidate is that the statically linked
+Cleopatra binary uses an older libm.
 
 ## Running
 

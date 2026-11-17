@@ -18,16 +18,22 @@
 #                        with -fdefault-real-8 on modern gfortran).
 #   -O0                  REQUIRED. -O3 breaks the type punning (spins read
 #                        as 0/2 and the run aborts).
+#   -msse2 -mfpmath=sse  REQUIRED for exact agreement. Plain -m32 uses x87
+#                        80-bit registers, which can flip last-bit tests such as
+#                        GRDSET's "VMIN < -2*U" and shift the grid
+#                        (40Ca(d,3He): 0.87771 vs 0.87759). SSE double precision
+#                        matches Cleopatra exactly (-ffloat-store also works).
 # With these flags ptolemy.x reproduces the Cleopatra 32-bit reference binary
-# to full printed precision on all 62 inputs in Cpp/examples + transfer_tests.
+# to full printed precision (TOTAL:) on all 104 inputs in Cpp/examples,
+# transfer_tests and PtolemyCpp/test_inputs.
 #
 
 set -e
 
 EXEC="ptolemy.x"
-FFLAGS="-c -m32 -g -O0 -fdefault-real-8 -fdefault-double-8 -w -std=legacy -fallow-argument-mismatch -fno-range-check -fallow-invalid-boz"
+FFLAGS="-c -m32 -msse2 -mfpmath=sse -g -O0 -fdefault-real-8 -fdefault-double-8 -w -std=legacy -fallow-argument-mismatch -fno-range-check -fallow-invalid-boz"
 # srread.c is K&R-era C (no <unistd.h>); modern gcc rejects it without these
-CFLAGS="-c -m32 -std=gnu89 -Wno-implicit-function-declaration"
+CFLAGS="-c -m32 -msse2 -mfpmath=sse -std=gnu89 -Wno-implicit-function-declaration"
 FC="gfortran"
 CC="gcc"
 
